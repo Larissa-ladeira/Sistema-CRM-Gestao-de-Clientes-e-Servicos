@@ -148,9 +148,9 @@ async def verify_token(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-@app.get("/ui")
+@app.get("/")
 async def serve_ui():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+    return FileResponse(os.path.join(BASE_DIR, "static", "crm-trackt.html"))
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
