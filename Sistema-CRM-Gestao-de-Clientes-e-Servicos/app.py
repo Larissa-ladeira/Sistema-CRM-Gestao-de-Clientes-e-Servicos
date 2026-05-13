@@ -150,7 +150,7 @@ async def verify_token(request: Request):
 
 @app.get("/ui")
 async def serve_ui():
-    return FileResponse("index.html")
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
