@@ -31,16 +31,28 @@ function updateThemeUI(isDark) {
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
-    sidebar.classList.toggle("sidebar-open");
-    overlay.classList.toggle("active");
+    const dashboard = document.getElementById("dashboard");
+    const isOpen = sidebar.classList.toggle("sidebar-open");
+    const isMobile = window.innerWidth <= 480;
+
+    dashboard.classList.toggle("sidebar-expanded", isOpen);
+    overlay.classList.toggle("active", isOpen && isMobile);
+    document.body.style.overflow = isOpen && isMobile ? "hidden" : "";
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const dashboard = document.getElementById("dashboard");
+    sidebar.classList.remove("sidebar-open");
+    dashboard.classList.remove("sidebar-expanded");
+    overlay.classList.remove("active");
+    document.body.style.overflow = "";
 }
 
 function closeSidebarIfMobile() {
-    if (window.innerWidth <= 1024) {
-        const sidebar = document.getElementById("sidebar");
-        const overlay = document.getElementById("sidebarOverlay");
-        sidebar.classList.remove("sidebar-open");
-        overlay.classList.remove("active");
+    if (window.innerWidth <= 480) {
+        closeSidebar();
     }
 }
 
@@ -70,6 +82,9 @@ function setCurrentDate() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const el = document.getElementById("currentDate");
     if (el) el.textContent = now.toLocaleDateString('pt-BR', options);
+
+    const heroDateEl = document.getElementById("heroDate");
+    if (heroDateEl) heroDateEl.textContent = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function updatePageTitle(sectionId) {
@@ -134,11 +149,42 @@ function showDashboard() {
             const username = payload.sub || "Admin";
             document.getElementById("userName").textContent = username;
             document.getElementById("userAvatar").textContent = username.charAt(0).toUpperCase();
-            document.getElementById("welcomeMessage").textContent = `Bem-vindo de volta, ${username.split(' ')[0]}!`;
+            document.getElementById("heroUserName").textContent = username.split(' ')[0];
+            document.getElementById("heroGreeting").textContent = getGreeting();
         } catch (e) {}
     }
     
     showSection("homeSection");
+    loadHomeStats();
+}
+
+function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia 👋";
+    if (hour < 18) return "Boa tarde 👋";
+    return "Boa noite 👋";
+}
+
+async function loadHomeStats() {
+    try {
+        const [clientesRes, resumoRes] = await Promise.all([
+            fetch(`${API_URL}/clientes`, { headers: { "Authorization": `Bearer ${authToken}` } }),
+            fetch(`${API_URL}/dashboard/resumo`, { headers: { "Authorization": `Bearer ${authToken}` } })
+        ]);
+        
+        if (clientesRes.ok) {
+            const clientes = await clientesRes.json();
+            document.getElementById("statTotal").textContent = clientes.length;
+        }
+        
+        if (resumoRes.ok) {
+            const resumo = await resumoRes.json();
+            document.getElementById("statActive").textContent = resumo.total_servicos || 0;
+            document.getElementById("statRevenue").textContent = (resumo.total_recebido || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+        }
+    } catch (error) {
+        console.error("Erro ao carregar estatísticas:", error);
+    }
 }
 
 function showSection(sectionId) {
@@ -148,11 +194,8 @@ function showSection(sectionId) {
     updatePageTitle(sectionId);
     updateNavActive(sectionId);
     
-    if (window.innerWidth <= 1024) {
-        const sidebar = document.getElementById("sidebar");
-        const overlay = document.getElementById("sidebarOverlay");
-        sidebar.classList.remove("sidebar-open");
-        overlay.classList.remove("active");
+    if (window.innerWidth <= 480) {
+        closeSidebar();
     }
 }
 

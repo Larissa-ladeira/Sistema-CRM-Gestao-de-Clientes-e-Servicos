@@ -32,7 +32,7 @@
     </div>
 
     <div id="dashboard">
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
         <aside class="sidebar" id="sidebar" onmouseleave="closeSidebarIfMobile()">
             <div class="sidebar-brand">
                 <div class="brand-icon-sm">◆</div>
@@ -109,50 +109,72 @@
 
             <div class="content-area">
                 <div id="homeSection" class="section active">
-                    <div class="welcome-banner">
-                        <div class="welcome-content">
-                            <h2 id="welcomeMessage">Bem-vindo de volta!</h2>
-                            <p>Aqui está um resumo do seu negócio hoje.</p>
+                    <div class="home-hero">
+                        <div class="hero-content">
+                            <p class="hero-greeting" id="heroGreeting">Olá 👋</p>
+                            <h1 class="hero-title" id="heroUserName">Bem-vindo!</h1>
+                            <p class="hero-subtitle">Aqui está o resumo do seu negócio hoje</p>
                         </div>
-                        <div class="welcome-illustration">◆</div>
+                        <div class="hero-date" id="heroDate"></div>
                     </div>
 
-                    <div class="menu-grid">
-                        <div class="menu-card" onclick="showDashboardView()">
-                            <div class="menu-card-icon blue">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                            </div>
-                            <div class="menu-card-content">
-                                <h3>Dashboard</h3>
-                                <p>Visão geral do seu negócio com gráficos e filtros.</p>
-                            </div>
-                        </div>
-                        <div class="menu-card" onclick="showClientes()">
-                            <div class="menu-card-icon green">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-total">
+                            <div class="stat-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
                             </div>
-                            <div class="menu-card-content">
-                                <h3>Clientes</h3>
-                                <p>Visualizar e gerenciar seus clientes.</p>
+                            <div class="stat-info">
+                                <span class="stat-label">Total de Clientes</span>
+                                <span class="stat-value" id="statTotal">0</span>
                             </div>
                         </div>
-                        <div class="menu-card" onclick="showServicos()">
-                            <div class="menu-card-icon purple">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <div class="stat-card stat-active">
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                             </div>
-                            <div class="menu-card-content">
-                                <h3>Serviços</h3>
-                                <p>Acompanhar serviços e projetos.</p>
+                            <div class="stat-info">
+                                <span class="stat-label">Serviços Ativos</span>
+                                <span class="stat-value" id="statActive">0</span>
                             </div>
                         </div>
-                        <div class="menu-card" onclick="showFinanceiro()">
-                            <div class="menu-card-icon orange">
+                        <div class="stat-card stat-inactive">
+                            <div class="stat-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
                             </div>
-                            <div class="menu-card-content">
-                                <h3>Financeiro</h3>
-                                <p>Controle de pagamentos e receitas.</p>
+                            <div class="stat-info">
+                                <span class="stat-label">Faturamento (R$)</span>
+                                <span class="stat-value" id="statRevenue">0</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <h2 class="actions-title">Ações Rápidas</h2>
+                        <div class="actions-grid">
+                            <button class="action-btn action-primary" onclick="openModal()">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </div>
+                                <span class="action-text">Novo Cliente</span>
+                            </button>
+                            <button class="action-btn action-success" onclick="showDashboardView()">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                </div>
+                                <span class="action-text">Ver Dashboard</span>
+                            </button>
+                            <button class="action-btn action-purple" onclick="showServicos()">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                </div>
+                                <span class="action-text">Serviços</span>
+                            </button>
+                            <button class="action-btn action-orange" onclick="showFinanceiro()">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
+                                </div>
+                                <span class="action-text">Financeiro</span>
+                            </button>
                         </div>
                     </div>
                 </div>
