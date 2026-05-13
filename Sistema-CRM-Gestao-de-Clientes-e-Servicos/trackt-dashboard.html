@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackT — Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2d2d5e; border-radius: 2px; }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: 240px;
+            background: #0f0f23;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #1a1a3e;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+
+        .sidebar-logo {
+            padding: 28px 24px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-logo .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .sidebar-logo .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-logo .logo-text span {
+            color: #a855f7;
+        }
+
+        .timer-widget {
+            margin: 0 16px 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a3e 0%, #2d1a4a 100%);
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #2d2d5e;
+        }
+
+        .timer-display {
+            font-size: 36px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: #fff;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .timer-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .timer-btn.play {
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            color: #fff;
+        }
+        .timer-btn.play:hover { transform: scale(1.1); box-shadow: 0 0 20px rgba(102, 126, 234, 0.4); }
+
+        .timer-btn.reset {
+            background: transparent;
+            color: #8892b0;
+            border: 1px solid #2d2d5e;
+        }
+        .timer-btn.reset:hover { background: #1a1a3e; color: #fff; }
+
+        .nav-section {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #495670;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: #8892b0;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            width: 100%;
+        }
+
+        .nav-item:hover {
+            background: #1a1a3e;
+            color: #e2e8f0;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .nav-item .nav-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid #1a1a3e;
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: #8892b0;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #1a1a3e;
+            color: #f56565;
+        }
+
+        .logout-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ========== MAIN ========== */
+        .main-content {
+            flex: 1;
+            padding: 28px 32px;
+            overflow-y: auto;
+            height: 100vh;
+        }
+
+        .welcome-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .welcome-text h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .welcome-text h1 span {
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-text p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .welcome-illustration {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, #1a1a3e, #2d1a4a);
+            padding: 12px 24px;
+            border-radius: 16px;
+            border: 1px solid #2d2d5e;
+        }
+
+        .welcome-illustration .emoji {
+            font-size: 32px;
+        }
+
+        .welcome-illustration .stats-small {
+            text-align: right;
+        }
+
+        .welcome-illustration .stats-small .num {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .welcome-illustration .stats-small .label {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* ========== WIDGETS GRID ========== */
+        .widgets-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .widget {
+            background: linear-gradient(135deg, #12122a, #1a1a3e);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid #1e1e42;
+            transition: all 0.3s ease;
+        }
+
+        .widget:hover {
+            border-color: #2d2d5e;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .widget-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .widget-header .period {
+            font-size: 12px;
+            color: #64748b;
+            padding: 4px 12px;
+            background: #1a1a3e;
+            border-radius: 20px;
+            border: 1px solid #2d2d5e;
+        }
+
+        .widget canvas {
+            max-height: 200px;
+            max-width: 100%;
+        }
+
+        /* ========== BOTTOM WIDGETS ========== */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+
+        .doughnut-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .doughnut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .doughnut-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #8892b0;
+        }
+
+        .doughnut-legend .legend-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .doughnut-legend .legend-item .pct {
+            margin-left: auto;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .income-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .income-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .income-item .income-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .income-item .income-icon.purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .income-item .income-icon.cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        .income-item .income-icon.pink { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+
+        .income-item .income-info {
+            flex: 1;
+        }
+
+        .income-item .income-info .income-label {
+            font-size: 13px;
+            color: #8892b0;
+        }
+
+        .income-item .income-info .income-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .income-item .income-change {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .income-item .income-change.up { color: #48bb78; }
+        .income-item .income-change.down { color: #f56565; }
+
+        /* ========== RIGHT SIDEBAR ========== */
+        .right-sidebar {
+            width: 280px;
+            background: #0f0f23;
+            border-left: 1px solid #1a1a3e;
+            padding: 28px 20px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+        }
+
+        .profile-card {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+
+        .profile-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .profile-card p {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .social-link {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #1a1a3e;
+            border: 1px solid #2d2d5e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8892b0;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        .social-link:hover { background: linear-gradient(135deg, #667eea, #a855f7); color: #fff; border-color: transparent; }
+
+        .right-section {
+            margin-bottom: 24px;
+        }
+
+        .right-section h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #8892b0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .visit-website {
+            background: linear-gradient(135deg, #1a1a3e, #2d1a4a);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #2d2d5e;
+        }
+
+        .visit-website .domain {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .visit-website .visits {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .visit-website .visit-bar {
+            margin-top: 12px;
+            height: 6px;
+            background: #1a1a3e;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .visit-website .visit-bar .fill {
+            height: 100%;
+            width: 72%;
+            background: linear-gradient(90deg, #667eea, #a855f7);
+            border-radius: 3px;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #0a0a1a;
+            border-radius: 12px;
+            border: 1px solid #1a1a3e;
+        }
+
+        .task-item .task-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .task-item .task-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-item .task-info .task-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        .task-item .task-info .task-time {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .task-item .task-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #2d2d5e;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent;
+            flex-shrink: 0;
+        }
+
+        .task-item .task-check.done {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 1400px) {
+            .right-sidebar { width: 240px; padding: 20px 16px; }
+        }
+
+        @media (max-width: 1200px) {
+            .right-sidebar { display: none; }
+            .widgets-grid { grid-template-columns: 1fr; }
+            .bottom-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 1024px) {
+            .bottom-grid { grid-template-columns: 1fr; }
+            .main-content { padding: 20px; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { padding: 16px; }
+            .welcome-section { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .welcome-text h1 { font-size: 22px; }
+            .widget { padding: 16px; }
+        }
+
+        /* mobile sidebar overlay */
+        .mobile-sidebar-toggle {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 8px;
+            cursor: pointer;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1001;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-sidebar-toggle { display: flex; }
+            .main-content { padding-top: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">T</div>
+            <div class="logo-text">Track<span>T</span></div>
+        </div>
+
+        <div class="timer-widget">
+            <div class="timer-display" id="timerDisplay">00:20</div>
+            <div class="timer-controls">
+                <button class="timer-btn play" id="timerBtn" onclick="toggleTimer()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                </button>
+                <button class="timer-btn reset" onclick="resetTimer()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="nav-section">Menu</div>
+        <nav class="sidebar-nav">
+            <button class="nav-item active" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Dashboard
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Tracking
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                Task List
+                <span class="nav-badge">3</span>
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Analytics
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                History
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Calendar
+            </button>
+            <button class="nav-item" onclick="setActive(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Settings
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Log Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+        <div class="welcome-section">
+            <div class="welcome-text">
+                <h1>Hi, <span>Karina!</span></h1>
+                <p>Let's check your activity summary today</p>
+            </div>
+            <div class="welcome-illustration">
+                <div class="emoji">🚀</div>
+                <div class="stats-small">
+                    <div class="num">12</div>
+                    <div class="label">Active Projects</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- top widgets -->
+        <div class="widgets-grid">
+            <div class="widget">
+                <div class="widget-header">
+                    <h3>Activity</h3>
+                    <span class="period">This Week</span>
+                </div>
+                <canvas id="activityChart"></canvas>
+            </div>
+            <div class="widget">
+                <div class="widget-header">
+                    <h3>5h 26m per day</h3>
+                    <span class="period">Avg Time</span>
+                </div>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+
+        <!-- bottom widgets -->
+        <div class="bottom-grid">
+            <div class="widget">
+                <div class="widget-header">
+                    <h3>Most users</h3>
+                    <span class="period">Platform</span>
+                </div>
+                <div class="doughnut-container">
+                    <canvas id="doughnutChart" style="max-width: 140px; max-height: 140px;"></canvas>
+                    <div class="doughnut-legend">
+                        <div class="legend-item"><span class="dot" style="background:#667eea"></span> Desktop <span class="pct">62%</span></div>
+                        <div class="legend-item"><span class="dot" style="background:#a855f7"></span> Mobile <span class="pct">25%</span></div>
+                        <div class="legend-item"><span class="dot" style="background:#06b6d4"></span> Tablet <span class="pct">13%</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="widget">
+                <div class="widget-header">
+                    <h3>Income</h3>
+                    <span class="period">This Month</span>
+                </div>
+                <div class="income-list">
+                    <div class="income-item">
+                        <div class="income-icon purple">💼</div>
+                        <div class="income-info">
+                            <div class="income-label">Freelance</div>
+                            <div class="income-value">$3,240.00</div>
+                        </div>
+                        <span class="income-change up">+12%</span>
+                    </div>
+                    <div class="income-item">
+                        <div class="income-icon cyan">🌐</div>
+                        <div class="income-info">
+                            <div class="income-label">Web Services</div>
+                            <div class="income-value">$1,890.00</div>
+                        </div>
+                        <span class="income-change up">+8%</span>
+                    </div>
+                    <div class="income-item">
+                        <div class="income-icon pink">🎨</div>
+                        <div class="income-info">
+                            <div class="income-label">Design</div>
+                            <div class="income-value">$960.00</div>
+                        </div>
+                        <span class="income-change down">-3%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="widget">
+                <div class="widget-header">
+                    <h3>Tasks Overview</h3>
+                    <span class="period">Today</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-size:13px;color:#8892b0;">Completed</span>
+                        <span style="font-size:20px;font-weight:700;color:#48bb78;">18</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-size:13px;color:#8892b0;">In Progress</span>
+                        <span style="font-size:20px;font-weight:700;color:#a855f7;">6</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-size:13px;color:#8892b0;">Pending</span>
+                        <span style="font-size:20px;font-weight:700;color:#f56565;">3</span>
+                    </div>
+                    <div style="margin-top:8px;height:6px;background:#1a1a3e;border-radius:3px;overflow:hidden;display:flex;">
+                        <div style="width:66%;background:linear-gradient(90deg,#667eea,#a855f7);border-radius:3px;"></div>
+                        <div style="width:22%;background:#06b6d4;"></div>
+                        <div style="width:12%;background:#f56565;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== RIGHT SIDEBAR ===== -->
+    <aside class="right-sidebar">
+        <div class="profile-card">
+            <div class="profile-avatar">K</div>
+            <h4>Kravchenko Karina</h4>
+            <p>Product Designer</p>
+            <div class="social-links">
+                <a href="#" class="social-link">in</a>
+                <a href="#" class="social-link">G</a>
+                <a href="#" class="social-link">F</a>
+                <a href="#" class="social-link">X</a>
+            </div>
+        </div>
+
+        <div class="right-section">
+            <h4>Visit Website</h4>
+            <div class="visit-website">
+                <div class="domain">karina.design</div>
+                <div class="visits">1,240 visits / month</div>
+                <div class="visit-bar"><div class="fill"></div></div>
+            </div>
+        </div>
+
+        <div class="right-section">
+            <h4>Last Tasks</h4>
+            <div class="task-list">
+                <div class="task-item">
+                    <div class="task-avatar">D</div>
+                    <div class="task-info">
+                        <div class="task-name">Dashboard UI</div>
+                        <div class="task-time">Due in 2 days</div>
+                    </div>
+                    <div class="task-check done">✓</div>
+                </div>
+                <div class="task-item">
+                    <div class="task-avatar" style="background:linear-gradient(135deg,#06b6d4,#0891b2);">M</div>
+                    <div class="task-info">
+                        <div class="task-name">Mobile App</div>
+                        <div class="task-time">Due in 5 days</div>
+                    </div>
+                    <div class="task-check"></div>
+                </div>
+                <div class="task-item">
+                    <div class="task-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">B</div>
+                    <div class="task-info">
+                        <div class="task-name">Brand Identity</div>
+                        <div class="task-time">Due in 1 week</div>
+                    </div>
+                    <div class="task-check done">✓</div>
+                </div>
+                <div class="task-item">
+                    <div class="task-avatar" style="background:linear-gradient(135deg,#ef4444,#dc2626);">P</div>
+                    <div class="task-info">
+                        <div class="task-name">Presentation</div>
+                        <div class="task-time">Due tomorrow</div>
+                    </div>
+                    <div class="task-check"></div>
+                </div>
+                <div class="task-item">
+                    <div class="task-avatar" style="background:linear-gradient(135deg,#48bb78,#38a169);">R</div>
+                    <div class="task-info">
+                        <div class="task-name">Research</div>
+                        <div class="task-time">Due in 3 days</div>
+                    </div>
+                    <div class="task-check done">✓</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        // ========== SIDEBAR ACTIVE STATE ==========
+        function setActive(el) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        // ========== TIMER ==========
+        let timerSeconds = 20;
+        let timerRunning = false;
+        let timerInterval = null;
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerBtn = document.getElementById('timerBtn');
+
+        function formatTimer(sec) {
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(sec % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTimer(timerSeconds);
+        }
+
+        function toggleTimer() {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                timerBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>';
+            } else {
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    updateTimerDisplay();
+                }, 1000);
+                timerRunning = true;
+                timerBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>';
+        }
+
+        // ========== MOBILE SIDEBAR ==========
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.style.display = sidebar.style.display === 'flex' ? 'none' : 'flex';
+            if (sidebar.style.display === 'flex') {
+                sidebar.style.position = 'fixed';
+                sidebar.style.top = '0';
+                sidebar.style.left = '0';
+                sidebar.style.zIndex = '1000';
+                sidebar.style.width = '260px';
+            } else {
+                sidebar.style.position = '';
+                sidebar.style.top = '';
+                sidebar.style.left = '';
+                sidebar.style.zIndex = '';
+                sidebar.style.width = '';
+            }
+        }
+
+        // ========== CHARTS ==========
+        const chartColors = {
+            purple: '#667eea',
+            purpleLight: 'rgba(102, 126, 234, 0.1)',
+            purpleGradient: (ctx) => {
+                const g = ctx.createLinearGradient(0, 0, 0, 200);
+                g.addColorStop(0, 'rgba(102, 126, 234, 0.4)');
+                g.addColorStop(1, 'rgba(102, 126, 234, 0.0)');
+                return g;
+            },
+            pink: '#ec4899',
+            cyan: '#06b6d4',
+            orange: '#f97316',
+        };
+
+        // Activity Chart (spline)
+        new Chart(document.getElementById('activityChart'), {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Activity',
+                    data: [28, 45, 38, 52, 41, 35, 48],
+                    borderColor: '#667eea',
+                    backgroundColor: chartColors.purpleGradient,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#0f0f23',
+                    pointBorderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: '#495670', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: '#495670', font: { size: 11 }, maxTicksLimit: 5 },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Bar Chart
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Hours',
+                    data: [4.5, 6.2, 5.0, 7.1, 5.8, 4.0, 5.5],
+                    backgroundColor: [
+                        '#667eea', '#a855f7', '#06b6d4', '#667eea', '#ec4899', '#a855f7', '#06b6d4'
+                    ],
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#495670', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: '#495670', font: { size: 11 }, maxTicksLimit: 5 },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Doughnut Chart
+        new Chart(document.getElementById('doughnutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Desktop', 'Mobile', 'Tablet'],
+                datasets: [{
+                    data: [62, 25, 13],
+                    backgroundColor: ['#667eea', '#a855f7', '#06b6d4'],
+                    borderColor: '#12122a',
+                    borderWidth: 3,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                }
+            }
+        });
+    </script>
+</body>
+</html>
