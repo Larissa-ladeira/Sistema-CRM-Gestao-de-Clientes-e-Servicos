@@ -460,6 +460,13 @@ def dashboard_servicos(
     if data_fim:
         query += " AND s.criado_em <= %s"
         params.append(f"{data_fim}-12-31 23:59:59" if len(data_fim) == 4 and data_fim.isdigit() else data_fim + " 23:59:59")
+    if status:
+        query += " AND s.status = %s"
+        params.append(status)
+    if cliente_busca:
+        query += " AND (c.nome ILIKE %s OR c.documento ILIKE %s)"
+        params.append(f"%{cliente_busca}%")
+        params.append(f"%{cliente_busca}%")
 
     query += " ORDER BY c.nome ASC"
 
