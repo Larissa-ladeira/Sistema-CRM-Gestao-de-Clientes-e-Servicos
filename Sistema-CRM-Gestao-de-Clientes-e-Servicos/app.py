@@ -60,6 +60,11 @@ def startup():
         """)
         conn.commit()
 
+        cur.execute("""
+            ALTER TABLE clientes ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+        """)
+        conn.commit()
+
         cur.execute("SELECT COUNT(*) FROM servicos WHERE criado_em IS NULL OR criado_em < '2020-01-01'")
         count = cur.fetchone()[0]
         if count > 0:
