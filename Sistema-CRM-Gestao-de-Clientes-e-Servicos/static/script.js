@@ -1,6 +1,6 @@
 const API_URL = "http://127.0.0.1:8000";
 let authToken = localStorage.getItem("authToken");
-let chartStatus = null, chartMetodo = null, chartClientesPizza = null, chartClientes = null;
+let chartStatus = null, chartMetodo = null, chartClientes = null;
 let pendingAction = null;
 let pinVerified = false;
 
@@ -338,7 +338,6 @@ function toggleServiceDesc(serviceId) {
 function renderCharts(d) {
     if (chartStatus) chartStatus.destroy();
     if (chartMetodo) chartMetodo.destroy();
-    if (chartClientesPizza) chartClientesPizza.destroy();
     if (chartClientes) chartClientes.destroy();
 
     const statusLabels = d.por_status.map(s => s.status);
@@ -376,27 +375,6 @@ function renderCharts(d) {
             }
         }
     });
-
-    const clientPizzaData = d.top_clientes.filter(c => parseFloat(c.valor_total) > 0).map(c => ({ nome: c.nome, valor: parseFloat(c.valor_total) }));
-    const clientPizzaColors = ["#667eea", "#a855f7", "#48bb78", "#f59e0b", "#f56565", "#06b6d4", "#ec4899", "#8b5cf6", "#ed8936", "#38bdf8"];
-
-    if (clientPizzaData.length > 0) {
-        chartClientesPizza = new Chart(document.getElementById("chartClientesPizza"), {
-            type: "doughnut",
-            data: {
-                labels: clientPizzaData.map(c => c.nome),
-                datasets: [{ data: clientPizzaData.map(c => c.valor), backgroundColor: clientPizzaColors.slice(0, clientPizzaData.length), borderWidth: 0 }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: "bottom", labels: { padding: 16, usePointStyle: true, pointStyle: "circle", font: { size: 11 } } }
-                }
-            }
-        });
-    } else {
-        document.getElementById("chartClientesPizza").parentElement.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h3>Sem dados</h3><p>Nenhum cliente com valor no período.</p></div>';
-    }
 
     const clientLabels = d.top_clientes.map(c => c.nome);
     const clientData = d.top_clientes.map(c => parseFloat(c.valor_total));
