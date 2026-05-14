@@ -286,7 +286,15 @@ body.light-theme .widget-header .period { background: #f1f5f9; border-color: #e2
 body.light-theme .stat-card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .stat-value { color: #475569; }
 body.light-theme .stat-label { color: #94a3b8; }
-
+body.light-theme .action-btn { background: linear-gradient(135deg, #12122a, #1a1a3e); border-color: #1e1e42; color: #e2e8f0; }
+body.light-theme .action-primary .action-icon { background: linear-gradient(135deg, #667eea, #a855f7); color: white; box-shadow: 0 6px 20px rgba(102,126,234,0.3); }
+body.light-theme .action-success .action-icon { background: linear-gradient(135deg, #48bb78, #38a169); color: white; box-shadow: 0 6px 20px rgba(72,187,120,0.3); }
+body.light-theme .action-purple .action-icon { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; box-shadow: 0 6px 20px rgba(168,85,247,0.3); }
+body.light-theme .action-orange .action-icon { background: linear-gradient(135deg, #ed8936, #dd6b20); color: white; box-shadow: 0 6px 20px rgba(237,137,54,0.3); }
+body.light-theme .action-primary:hover { background: linear-gradient(135deg, #667eea, #a855f7); color: white; }
+body.light-theme .action-success:hover { background: linear-gradient(135deg, #48bb78, #38a169); color: white; }
+body.light-theme .action-purple:hover { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; }
+body.light-theme .action-orange:hover { background: linear-gradient(135deg, #ed8936, #dd6b20); color: white; }
 body.light-theme .card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .profile-card h4 { color: #475569; }
 body.light-theme .profile-card p { color: #64748b; }
