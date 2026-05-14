@@ -445,10 +445,12 @@
     }
 
     function showSection(id){
+        const active=document.querySelector(".section.active");
+        if(active&&active.id!==id)prevSection=active.id;
         document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id));
         updatePageTitle(id);updateNavActive(id);if(window.innerWidth<=480)closeSidebar();
         const bb=document.getElementById("backBtn");
-        if(bb) bb.style.display=prevSection&&prevSection!==id?"flex":"none";
+        if(bb)bb.style.display=prevSection&&prevSection!==id?"flex":"none";
     }
     function showHome(){showSection("homeSection");resetPinSession();}
     function showClientes(){resetPinSession();showSection("buscaSection");updatePinBadge();document.getElementById("clienteDetails").innerHTML="";}
@@ -457,8 +459,6 @@
     function showFinanceiro(){showSection("financeiroSection");document.getElementById("financeiroBody").innerHTML="";document.getElementById("financeiroLoading").style.display="block";document.getElementById("financeiroTotal").textContent="";}
 
     function showFiltroServicos(params){
-        const active=document.querySelector(".section.active");
-        if(active)prevSection=active.id;
         showServicos();
         const p=new URLSearchParams(params);
         if(p.has("status")) document.getElementById("filtroServicoStatus").value=p.get("status");
@@ -466,8 +466,6 @@
         loadServicos();
     }
     function showFiltroFinanceiro(params){
-        const active=document.querySelector(".section.active");
-        if(active)prevSection=active.id;
         showFinanceiro();
         const p=new URLSearchParams(params);
         if(p.has("metodo")) document.getElementById("filtroFinMetodo").value=p.get("metodo");
@@ -475,13 +473,9 @@
         loadFinanceiro();
     }
     function showServicosFromDash(){
-        const active=document.querySelector(".section.active");
-        if(active)prevSection=active.id;
         showServicos(); loadServicos();
     }
     function showFinanceiroFromDash(){
-        const active=document.querySelector(".section.active");
-        if(active)prevSection=active.id;
         showFinanceiro(); loadFinanceiro();
     }
     function goBack(){
