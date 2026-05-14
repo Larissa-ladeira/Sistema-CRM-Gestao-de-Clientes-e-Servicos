@@ -442,7 +442,7 @@ def dashboard_servicos(
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     query = """
-        SELECT s.*, c.nome as cliente_nome 
+        SELECT s.*, c.nome as cliente_nome, c.id as cliente_id
         FROM servicos s 
         JOIN clientes c ON s.cliente_id = c.id 
         WHERE 1=1
@@ -493,7 +493,7 @@ def dashboard_financeiro(
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     query = """
-        SELECT f.*, s.titulo as servico_titulo, s.status as servico_status, s.descricao, c.nome as cliente_nome
+        SELECT f.*, s.titulo as servico_titulo, s.status as servico_status, s.descricao, c.nome as cliente_nome, c.id as cliente_id
         FROM financeiro f
         JOIN servicos s ON f.servico_id = s.id
         JOIN clientes c ON s.cliente_id = c.id
