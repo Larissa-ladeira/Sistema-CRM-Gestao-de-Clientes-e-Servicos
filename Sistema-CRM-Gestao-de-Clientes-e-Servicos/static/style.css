@@ -44,8 +44,8 @@ a { color: #667eea; text-decoration: none; }
 .hamburger { display: none !important; background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 10px; color: #e2e8f0; transition: all 0.3s ease; }
 .hamburger:hover { background: #1a1a3e; }
 .hamburger svg { width: 22px; height: 22px; }
-.back-text-btn { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid #334155; cursor: pointer; padding: 8px 20px; border-radius: 10px; color: #94a3b8; font-size: 14px; font-weight: 500; transition: all 0.3s ease; margin: 8px 24px; }
-.back-text-btn:hover { background: #1a1a3e; color: #667eea; border-color: #667eea; }
+.back-text-btn { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #1e1e4a, #2a2a5e); border: 1px solid #334155; cursor: pointer; padding: 10px 24px; border-radius: 12px; color: #cbd5e1; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.back-text-btn:hover { background: linear-gradient(135deg, #2a2a5e, #3a3a7e); color: #667eea; border-color: #667eea; box-shadow: 0 4px 12px rgba(102,126,234,0.3); transform: translateY(-1px); }
 .page-title { margin: 0; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .date-display { font-size: 13px; color: #64748b; padding: 5px 14px; border-radius: 20px; border: 1px solid #2d2d5e; }
@@ -271,8 +271,8 @@ body.light-theme .user-name { color: #475569; }
 body.light-theme .user-role { color: #94a3b8; }
 body.light-theme .logout-btn { color: #64748b; }
 body.light-theme .logout-btn:hover { background: #fef2f2; }
-body.light-theme .back-text-btn { color: #94a3b8; border-color: #e2e8f0; }
-body.light-theme .back-text-btn:hover { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+body.light-theme .back-text-btn { background: #ffffff; color: #64748b; border-color: #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+body.light-theme .back-text-btn:hover { background: #f8fafc; color: #475569; border-color: #667eea; box-shadow: 0 2px 8px rgba(102,126,234,0.15); }
 body.light-theme .nav-section { color: #94a3b8; }
 body.light-theme .sidebar-footer { border-top-color: #e2e8f0; }
 body.light-theme .topbar { background: rgba(255,255,255,0.85); border-bottom-color: #e2e8f0; }
