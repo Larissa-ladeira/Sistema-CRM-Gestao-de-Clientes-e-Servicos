@@ -216,10 +216,11 @@ tr:hover td { background: rgba(102,126,234,0.06); }
 .dashboard-content .stat-label { font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500; text-transform: none; letter-spacing: normal; }
 .dashboard-content .stat-value { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.2; letter-spacing: normal; }
 .dashboard-content .stat-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; justify-items: center; }
 .chart-card { padding: 22px; }
 .chart-card h3 { margin: 0 0 18px; font-size: 15px; font-weight: 600; color: #fff; }
 .chart-card canvas { max-height: 280px; }
+.chart-card:nth-child(-n+2) { max-width: 480px; justify-self: center; width: 100%; }
 .chart-card.full-width { grid-column: 1 / -1; }
 .empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
 .empty-icon { width: 72px; height: 72px; background: rgba(10,10,26,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
@@ -291,10 +292,14 @@ body.light-theme .action-primary .action-icon,
 body.light-theme .action-success .action-icon,
 body.light-theme .action-purple .action-icon,
 body.light-theme .action-orange .action-icon { background: #f1f5f9; color: #64748b; box-shadow: none; }
-body.light-theme .action-primary:hover,
-body.light-theme .action-success:hover,
-body.light-theme .action-purple:hover,
-body.light-theme .action-orange:hover { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+body.light-theme .action-primary:hover { background: linear-gradient(135deg, #667eea, #a855f7) !important; color: white !important; border-color: transparent !important; }
+body.light-theme .action-success:hover { background: linear-gradient(135deg, #48bb78, #38a169) !important; color: white !important; border-color: transparent !important; }
+body.light-theme .action-purple:hover { background: linear-gradient(135deg, #a855f7, #7c3aed) !important; color: white !important; border-color: transparent !important; }
+body.light-theme .action-orange:hover { background: linear-gradient(135deg, #ed8936, #dd6b20) !important; color: white !important; border-color: transparent !important; }
+body.light-theme .action-primary:hover .action-icon,
+body.light-theme .action-success:hover .action-icon,
+body.light-theme .action-purple:hover .action-icon,
+body.light-theme .action-orange:hover .action-icon { background: transparent; color: white; box-shadow: none; }
 body.light-theme .card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .profile-card h4 { color: #475569; }
 body.light-theme .profile-card p { color: #64748b; }
