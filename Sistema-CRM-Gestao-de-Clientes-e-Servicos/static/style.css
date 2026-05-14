@@ -286,19 +286,7 @@ body.light-theme .widget-header .period { background: #f1f5f9; border-color: #e2
 body.light-theme .stat-card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .stat-value { color: #475569; }
 body.light-theme .stat-label { color: #94a3b8; }
-body.light-theme .action-btn { background: #ffffff; border-color: #e2e8f0; color: #475569; }
-body.light-theme .action-primary .action-icon,
-body.light-theme .action-success .action-icon,
-body.light-theme .action-purple .action-icon,
-body.light-theme .action-orange .action-icon { background: #f1f5f9; color: #64748b; box-shadow: none; }
-body.light-theme .action-primary:hover { background: linear-gradient(135deg, #667eea, #a855f7) !important; color: white !important; border-color: transparent !important; }
-body.light-theme .action-success:hover { background: linear-gradient(135deg, #48bb78, #38a169) !important; color: white !important; border-color: transparent !important; }
-body.light-theme .action-purple:hover { background: linear-gradient(135deg, #a855f7, #7c3aed) !important; color: white !important; border-color: transparent !important; }
-body.light-theme .action-orange:hover { background: linear-gradient(135deg, #ed8936, #dd6b20) !important; color: white !important; border-color: transparent !important; }
-body.light-theme .action-primary:hover .action-icon,
-body.light-theme .action-success:hover .action-icon,
-body.light-theme .action-purple:hover .action-icon,
-body.light-theme .action-orange:hover .action-icon { background: transparent; color: white; box-shadow: none; }
+
 body.light-theme .card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .profile-card h4 { color: #475569; }
 body.light-theme .profile-card p { color: #64748b; }
