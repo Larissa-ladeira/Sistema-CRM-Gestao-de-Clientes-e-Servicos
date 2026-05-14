@@ -1,6 +1,6 @@
 const API_URL = "http://127.0.0.1:8000";
 let authToken = localStorage.getItem("authToken");
-let chartStatus = null, chartMetodo = null, chartClientes = null;
+let chartStatus = null, chartMetodo = null, chartClientesPizza = null, chartClientes = null;
 let pendingAction = null;
 let pinVerified = false;
 
@@ -338,6 +338,7 @@ function toggleServiceDesc(serviceId) {
 function renderCharts(d) {
     if (chartStatus) chartStatus.destroy();
     if (chartMetodo) chartMetodo.destroy();
+    if (chartClientesPizza) chartClientesPizza.destroy();
     if (chartClientes) chartClientes.destroy();
 
     const statusLabels = d.por_status.map(s => s.status);
@@ -372,6 +373,24 @@ function renderCharts(d) {
             responsive: true,
             plugins: {
                 legend: { position: "bottom", labels: { padding: 16, usePointStyle: true, pointStyle: "circle" } }
+            }
+        }
+    });
+
+    const clientPizzaLabels = d.top_clientes.map(c => c.nome);
+    const clientPizzaData = d.top_clientes.map(c => parseFloat(c.valor_total));
+    const clientPizzaColors = ["#667eea", "#a855f7", "#48bb78", "#f59e0b", "#f56565", "#06b6d4", "#ec4899", "#8b5cf6", "#ed8936", "#38bdf8"];
+
+    chartClientesPizza = new Chart(document.getElementById("chartClientesPizza"), {
+        type: "doughnut",
+        data: {
+            labels: clientPizzaLabels,
+            datasets: [{ data: clientPizzaData, backgroundColor: clientPizzaColors.slice(0, clientPizzaLabels.length), borderWidth: 0 }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: "bottom", labels: { padding: 16, usePointStyle: true, pointStyle: "circle", font: { size: 11 } } }
             }
         }
     });
