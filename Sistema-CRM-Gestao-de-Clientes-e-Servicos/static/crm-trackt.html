@@ -379,7 +379,15 @@
 
     // PAGE
     const pageTitles={homeSection:"In\u00edcio",dashboardSection:"Dashboard",buscaSection:"Clientes",clientesSection:"Lista de Clientes",servicosSection:"Servi\u00e7os",financeiroSection:"Financeiro"};
-    if(authToken) showDashboard();
+    if(authToken) {
+        (async () => {
+            try {
+                const r = await fetch(API_URL+"/clientes", {headers: {"Authorization": "Bearer "+authToken}});
+                if (r.ok) { showDashboard(); }
+                else { localStorage.removeItem("authToken"); authToken = null; }
+            } catch(e) { localStorage.removeItem("authToken"); authToken = null; }
+        })();
+    }
 
     function setCurrentDate(){
         const now=new Date();
