@@ -280,6 +280,14 @@ body.light-theme .stat-card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .stat-value { color: #1a202c; }
 body.light-theme .stat-label { color: #94a3b8; }
 body.light-theme .action-btn { background: #ffffff; border-color: #e2e8f0; color: #1a202c; }
+body.light-theme .action-primary .action-icon,
+body.light-theme .action-success .action-icon,
+body.light-theme .action-purple .action-icon,
+body.light-theme .action-orange .action-icon { background: #f1f5f9; color: #64748b; box-shadow: none; }
+body.light-theme .action-primary:hover,
+body.light-theme .action-success:hover,
+body.light-theme .action-purple:hover,
+body.light-theme .action-orange:hover { background: #f1f5f9; color: #1a202c; border-color: #cbd5e1; }
 body.light-theme .card { background: #ffffff; border-color: #e2e8f0; }
 body.light-theme .profile-card h4 { color: #1a202c; }
 body.light-theme .profile-card p { color: #64748b; }
