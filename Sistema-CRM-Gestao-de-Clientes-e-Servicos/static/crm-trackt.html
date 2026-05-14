@@ -218,12 +218,12 @@
                     <div id="dashContent" style="display:none;">
                         <div id="dashTotalFiltrado" class="dash-filtered-total"></div>
                         <div class="stats-grid">
-                            <div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div class="stat-info"><div class="stat-label">Total de Serviços</div><div class="stat-value" id="statTotalServicos">0</div></div></div>
-                            <div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><div class="stat-label">Serviços Pagos</div><div class="stat-value" id="statPagos">0</div><div class="stat-sub" id="statPagosPct">0% do total</div></div></div>
-                            <div class="stat-card"><div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><div class="stat-label">Pendentes</div><div class="stat-value" id="statPendentes">0</div><div class="stat-sub" id="statPendentesPct">0% do total</div></div></div>
-                            <div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="stat-info"><div class="stat-label">Total Recebido</div><div class="stat-value" id="statRecebido">R$ 0</div></div></div>
-                            <div class="stat-card"><div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="stat-info"><div class="stat-label">Total Pendente</div><div class="stat-value" id="statPendente">R$ 0</div></div></div>
-                            <div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="stat-info"><div class="stat-label">Valor Total Contratos</div><div class="stat-value" id="statValorTotal">R$ 0</div></div></div>
+                            <div class="stat-card" onclick="showServicos(); loadServicos();"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div class="stat-info"><div class="stat-label">Total de Serviços</div><div class="stat-value" id="statTotalServicos">0</div></div></div>
+                            <div class="stat-card" onclick="showFiltroServicos('status=Finalizado')"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><div class="stat-label">Serviços Pagos</div><div class="stat-value" id="statPagos">0</div><div class="stat-sub" id="statPagosPct">0% do total</div></div></div>
+                            <div class="stat-card" onclick="showFiltroServicos('status=Pendente')"><div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><div class="stat-label">Pendentes</div><div class="stat-value" id="statPendentes">0</div><div class="stat-sub" id="statPendentesPct">0% do total</div></div></div>
+                            <div class="stat-card" onclick="showFinanceiro(); loadFinanceiro();"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="stat-info"><div class="stat-label">Total Recebido</div><div class="stat-value" id="statRecebido">R$ 0</div></div></div>
+                            <div class="stat-card" onclick="showFiltroServicos('status=Pendente')"><div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="stat-info"><div class="stat-label">Total Pendente</div><div class="stat-value" id="statPendente">R$ 0</div></div></div>
+                            <div class="stat-card" onclick="showServicos(); loadServicos();"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="stat-info"><div class="stat-label">Valor Total Contratos</div><div class="stat-value" id="statValorTotal">R$ 0</div></div></div>
                         </div>
                         <div class="charts-grid">
                             <div class="card chart-card"><h3>Serviços por Status</h3><canvas id="chartStatus"></canvas></div>
@@ -358,6 +358,7 @@
     let chartStatus = null, chartMetodo = null, chartClientes = null;
     let pendingAction = null;
     let pinVerified = false;
+    let dashData = null;
 
     // THEME
     function toggleTheme(){
@@ -446,6 +447,21 @@
     function showServicos(){showSection("servicosSection");document.getElementById("servicosBody").innerHTML="";document.getElementById("servicosLoading").style.display="block";document.getElementById("servicosTotal").textContent="";}
     function showFinanceiro(){showSection("financeiroSection");document.getElementById("financeiroBody").innerHTML="";document.getElementById("financeiroLoading").style.display="block";document.getElementById("financeiroTotal").textContent="";}
 
+    function showFiltroServicos(params){
+        showServicos();
+        const p=new URLSearchParams(params);
+        if(p.has("status")) document.getElementById("filtroServicoStatus").value=p.get("status");
+        if(p.has("cliente_busca")) document.getElementById("filtroServicoCliente").value=p.get("cliente_busca");
+        loadServicos();
+    }
+    function showFiltroFinanceiro(params){
+        showFinanceiro();
+        const p=new URLSearchParams(params);
+        if(p.has("metodo")) document.getElementById("filtroFinMetodo").value=p.get("metodo");
+        if(p.has("status")) document.getElementById("filtroFinStatus").value=p.get("status");
+        loadFinanceiro();
+    }
+
     function fmt(v){return"R$ "+parseFloat(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});}
 
     function statusBadge(status,descricao){
@@ -473,7 +489,7 @@
         const di=document.getElementById("dashDataInicio").value,df=document.getElementById("dashDataFim").value;
         let url=API_URL+"/dashboard/resumo";const p=[];if(di)p.push("data_inicio="+di);if(df)p.push("data_fim="+df);if(p.length)url+="?"+p.join("&");
         try{
-            const r=await fetch(url,{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const d=await r.json();
+            const r=await fetch(url,{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const d=await r.json(); dashData = d;
             document.getElementById("dashPlaceholder").style.display="none";document.getElementById("dashContent").style.display="block";
             document.getElementById("statTotalServicos").textContent=d.total_servicos||0;
             document.getElementById("statPagos").textContent=d.servicos_pagos||0;
@@ -494,11 +510,11 @@
     function renderCharts(d){
         if(chartStatus)chartStatus.destroy();if(chartMetodo)chartMetodo.destroy();if(chartClientes)chartClientes.destroy();
         const sL=d.por_status.map(s=>s.status),sD=d.por_status.map(s=>s.quantidade),sC=["#10b981","#3b82f6","#f59e0b","#ef4444"];
-        chartStatus=new Chart(document.getElementById("chartStatus"),{type:"doughnut",data:{labels:sL,datasets:[{data:sD,backgroundColor:sC,borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:"bottom",labels:{padding:16,usePointStyle:true,pointStyle:"circle",color:"#8892b0"}}}}});
+        chartStatus=new Chart(document.getElementById("chartStatus"),{type:"doughnut",data:{labels:sL,datasets:[{data:sD,backgroundColor:sC,borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:"bottom",labels:{padding:16,usePointStyle:true,pointStyle:"circle",color:"#8892b0"}}},onClick:(e,els)=>{if(els.length>0){const i=els[0].index;showFiltroServicos("status="+encodeURIComponent(d.por_status[i].status));}}}});
         const mL=d.por_metodo.map(m=>m.metodo_pagamento),mD=d.por_metodo.map(m=>parseFloat(m.total)),mC=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#f97316"];
-        chartMetodo=new Chart(document.getElementById("chartMetodo"),{type:"doughnut",data:{labels:mL,datasets:[{data:mD,backgroundColor:mC.slice(0,mL.length),borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:"bottom",labels:{padding:16,usePointStyle:true,pointStyle:"circle",color:"#8892b0"}}}}});
+        chartMetodo=new Chart(document.getElementById("chartMetodo"),{type:"doughnut",data:{labels:mL,datasets:[{data:mD,backgroundColor:mC.slice(0,mL.length),borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:"bottom",labels:{padding:16,usePointStyle:true,pointStyle:"circle",color:"#8892b0"}}},onClick:(e,els)=>{if(els.length>0){const i=els[0].index;showFiltroFinanceiro("metodo="+encodeURIComponent(d.por_metodo[i].metodo_pagamento));}}}});
         const cL=d.top_clientes.map(c=>c.nome),cD=d.top_clientes.map(c=>parseFloat(c.valor_total));
-        chartClientes=new Chart(document.getElementById("chartClientes"),{type:"bar",data:{labels:cL,datasets:[{label:"Valor Total",data:cD,backgroundColor:"#3b82f6",borderRadius:6,barThickness:24}]},options:{indexAxis:"y",responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#64748b"}},y:{grid:{display:false},ticks:{color:"#64748b"}}}}});
+        chartClientes=new Chart(document.getElementById("chartClientes"),{type:"bar",data:{labels:cL,datasets:[{label:"Valor Total",data:cD,backgroundColor:"#3b82f6",borderRadius:6,barPercentage:0.5,categoryPercentage:0.7}]},options:{indexAxis:"y",responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#64748b"}},y:{grid:{display:false},ticks:{color:"#64748b"}}},onClick:(e,els)=>{if(els.length>0){const i=els[0].index;showFiltroServicos("cliente_busca="+encodeURIComponent(d.top_clientes[i].nome));}}}});
     }
 
     // SERVICOS
