@@ -2,12 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Form
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt as _bcrypt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import json
@@ -65,6 +66,19 @@ def startup():
         """)
         conn.commit()
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                senha_hash VARCHAR(255) NOT NULL,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ativo BOOLEAN DEFAULT TRUE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'usuarios' criada/verificada.")
+
         cur.execute("SELECT COUNT(*) FROM servicos WHERE criado_em IS NULL OR criado_em < '2020-01-01'")
         count = cur.fetchone()[0]
         if count > 0:
@@ -98,7 +112,11 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 # PIN extra para visualizar detalhes de clientes
 CLIENTE_VIEW_PIN = os.getenv("CLIENTE_VIEW_PIN", "1234")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+
+def verify_password(password: str, hashed: str) -> bool:
+    return _bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,8 +151,20 @@ def get_db_connection():
 
 def authenticate_user(username: str, password: str):
     if username == ADMIN_USER and password == ADMIN_PASSWORD:
-        return True
-    return False
+        return {"sub": username, "role": "admin"}
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM usuarios WHERE email = %s AND ativo = TRUE", (username,))
+        user = cur.fetchone()
+        if user and verify_password(password, user["senha_hash"]):
+            return {"sub": user["email"], "role": "user", "user_id": user["id"], "nome": user["nome"]}
+        return None
+    except Exception:
+        return None
+    finally:
+        cur.close()
+        conn.close()
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -158,11 +188,152 @@ async def serve_ui():
     return FileResponse(os.path.join(BASE_DIR, "static", "crm-trackt.html"))
 
 @app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if not authenticate_user(form_data.username, form_data.password):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), remember_me: bool = Form(False)):
+    user_data = authenticate_user(form_data.username, form_data.password)
+    if not user_data:
         raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
-    access_token = create_access_token(data={"sub": form_data.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    expire_days = 30 if remember_me else 1
+    access_token = create_access_token(data=user_data, expires_delta=timedelta(days=expire_days))
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": expire_days * 86400,
+        "user": {
+            "sub": user_data["sub"],
+            "role": user_data["role"],
+            "nome": user_data.get("nome", "Admin"),
+            "user_id": user_data.get("user_id")
+        }
+    }
+
+class RegisterSchema(BaseModel):
+    nome: str
+    email: str
+    password: str
+
+class CheckEmailSchema(BaseModel):
+    email: str
+
+@app.post("/auth/register")
+def register(data: RegisterSchema):
+    if not data.nome or not data.email or not data.password:
+        raise HTTPException(status_code=400, detail="Todos os campos são obrigatórios")
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="A senha deve ter no mínimo 6 caracteres")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM usuarios WHERE email = %s", (data.email,))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Este email já está cadastrado")
+        senha_hash = hash_password(data.password)
+        cur.execute(
+            "INSERT INTO usuarios (nome, email, senha_hash) VALUES (%s, %s, %s) RETURNING id, data_criacao;",
+            (data.nome.strip(), data.email.strip().lower(), senha_hash)
+        )
+        user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {
+            "mensagem": "Cadastro realizado com sucesso!",
+            "user": {
+                "id": user[0],
+                "nome": data.nome.strip(),
+                "email": data.email.strip().lower(),
+                "data_criacao": user[1].isoformat() if user[1] else None
+            }
+        }
+    except HTTPException:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Erro ao cadastrar: {str(e)}")
+
+@app.post("/auth/check-email")
+def check_email(data: CheckEmailSchema):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM usuarios WHERE email = %s", (data.email.strip().lower(),))
+        exists = cur.fetchone() is not None
+        return {"disponivel": not exists}
+    finally:
+        cur.close()
+        conn.close()
+
+class GoogleAuthSchema(BaseModel):
+    credential: str
+
+@app.post("/auth/google")
+def google_login(data: GoogleAuthSchema, remember_me: bool = False):
+    try:
+        import google.oauth2.id_token
+        import google.auth.transport.requests
+        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(status_code=500, detail="Google Login não configurado. Configure GOOGLE_CLIENT_ID no .env")
+        request = google.auth.transport.requests.Request()
+        id_info = google.oauth2.id_token.verify_oauth2_token(data.credential, request, GOOGLE_CLIENT_ID)
+        email = id_info.get("email")
+        name = id_info.get("name", email.split("@")[0])
+        if not email:
+            raise HTTPException(status_code=400, detail="Email não fornecido pelo Google")
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("SELECT * FROM usuarios WHERE email = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                cur.execute(
+                    "INSERT INTO usuarios (nome, email, senha_hash) VALUES (%s, %s, %s) RETURNING id, nome, data_criacao;",
+                    (name, email, hash_password(os.urandom(24).hex()))
+                )
+                new_user = cur.fetchone()
+                conn.commit()
+                user_id = new_user["id"]
+                nome = new_user["nome"]
+            else:
+                user_id = user["id"]
+                nome = user["nome"]
+            expire_days = 30 if remember_me else 1
+            user_data = {"sub": email, "role": "user", "user_id": user_id, "nome": nome}
+            access_token = create_access_token(data=user_data, expires_delta=timedelta(days=expire_days))
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "expires_in": expire_days * 86400,
+                "user": {
+                    "sub": email,
+                    "role": "user",
+                    "nome": nome,
+                    "user_id": user_id
+                }
+            }
+        finally:
+            cur.close()
+            conn.close()
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Token Google inválido: {str(e)}")
+
+@app.get("/auth/google-client-id")
+def get_google_client_id():
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    return {"client_id": client_id}
+
+@app.get("/usuarios/me")
+def usuario_atual(token_data: dict = Depends(verify_token)):
+    return {
+        "sub": token_data.get("sub"),
+        "role": token_data.get("role", "user"),
+        "nome": token_data.get("nome", "Usuário"),
+        "user_id": token_data.get("user_id")
+    }
 
 class PinSchema(BaseModel):
     pin: str

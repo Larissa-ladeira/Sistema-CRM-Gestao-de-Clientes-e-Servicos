@@ -7,29 +7,74 @@
     <title>CRM Freelancer — TrackT Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <!-- ========= LOGIN ========= -->
     <div id="loginScreen">
-        <div class="login-container">
+        <div class="login-container" id="loginContainer">
             <div class="login-brand">
                 <div class="brand-icon">◆</div>
                 <h1>CRM Freelancer</h1>
                 <p>Gerencie seus clientes e projetos</p>
             </div>
-            <form onsubmit="fazerLogin(event)">
-                <div class="form-group">
-                    <label for="username">Usuário</label>
-                    <input type="text" id="username" required autocomplete="username" placeholder="Digite seu usuário">
-                </div>
-                <div class="form-group">
-                    <label for="password">Senha</label>
-                    <input type="password" id="password" required autocomplete="current-password" placeholder="Digite sua senha">
-                </div>
-                <button type="submit" class="btn btn-full btn-primary-lg">Entrar</button>
-                <p class="error-msg" id="loginError">Usuário ou senha inválidos.</p>
-            </form>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <form onsubmit="fazerLogin(event)">
+                    <div class="form-group">
+                        <label for="username">Usuário ou Email</label>
+                        <input type="text" id="username" required autocomplete="username" placeholder="Digite seu usuário ou email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" required autocomplete="current-password" placeholder="Digite sua senha">
+                    </div>
+                    <div class="form-group remember-group">
+                        <label class="remember-label">
+                            <input type="checkbox" id="rememberMe" class="remember-checkbox">
+                            <span class="remember-checkmark"></span>
+                            Lembre-me
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-full btn-primary-lg">Entrar</button>
+                    <div class="divider"><span>ou</span></div>
+                    <div id="googleButton"></div>
+                    <p class="error-msg" id="loginError">Usuário ou senha inválidos.</p>
+                </form>
+                <p class="auth-toggle-text">
+                    Ainda não tem conta? <a href="#" onclick="showRegister()">Cadastre-se</a>
+                </p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" style="display:none;">
+                <form onsubmit="fazerCadastro(event)">
+                    <div class="form-group">
+                        <label for="regNome">Nome completo</label>
+                        <input type="text" id="regNome" required placeholder="Seu nome">
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email</label>
+                        <input type="email" id="regEmail" required autocomplete="email" placeholder="seu@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Senha</label>
+                        <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div class="form-group">
+                        <label for="regConfirm">Confirmar senha</label>
+                        <input type="password" id="regConfirm" required minlength="6" autocomplete="new-password" placeholder="Repita a senha">
+                    </div>
+                    <button type="submit" class="btn btn-full btn-primary-lg">Criar Conta</button>
+                    <p class="error-msg" id="regError">Erro ao cadastrar.</p>
+                    <p class="success-msg" id="regSuccess" style="display:none;">Conta criada com sucesso! Faça login.</p>
+                </form>
+                <p class="auth-toggle-text">
+                    Já tem conta? <a href="#" onclick="showLogin()">Fazer login</a>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -359,6 +404,8 @@
     </div>
     <script>
     const API_URL = window.location.origin;
+    let GOOGLE_CLIENT_ID = "";
+    fetch(API_URL+"/auth/google-client-id").then(r=>r.json()).then(d=>{GOOGLE_CLIENT_ID=d.client_id;if(GOOGLE_CLIENT_ID&&document.getElementById("googleButton")){google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleGoogleCredential});google.accounts.id.renderButton(document.getElementById("googleButton"),{theme:"outline",size:"large",type:"standard",text:"signin_with",width:"100%"});}}).catch(()=>{});
     let authToken = localStorage.getItem("authToken");
     let chartStatus = null, chartMetodo = null, chartClientes = null;
     let pendingAction = null;
@@ -388,12 +435,15 @@
     // PAGE
     const pageTitles={homeSection:"In\u00edcio",dashboardSection:"Dashboard",buscaSection:"Clientes",clientesSection:"Lista de Clientes",servicosSection:"Servi\u00e7os",financeiroSection:"Financeiro"};
     if(authToken) {
+        if(!localStorage.getItem("userName")){
+            try{const td=authToken.split('.')[1];if(td){const p=JSON.parse(atob(td));localStorage.setItem("userName",p.nome||p.sub||"Admin");localStorage.setItem("userRole",p.role||"admin");}}catch(e){}
+        }
         (async () => {
             try {
                 const r = await fetch(API_URL+"/clientes", {headers: {"Authorization": "Bearer "+authToken}});
                 if (r.ok) { showDashboard(); }
-                else { localStorage.removeItem("authToken"); authToken = null; }
-            } catch(e) { localStorage.removeItem("authToken"); authToken = null; }
+                else { localStorage.removeItem("authToken"); localStorage.removeItem("userRole"); localStorage.removeItem("userName"); authToken = null; }
+            } catch(e) { localStorage.removeItem("authToken"); localStorage.removeItem("userRole"); localStorage.removeItem("userName"); authToken = null; }
         })();
     }
 
@@ -405,31 +455,91 @@
     function updatePageTitle(id){const t=pageTitles[id]||"CRM",el=document.getElementById("pageTitle");if(el)el.textContent=t;}
     function updateNavActive(id){document.querySelectorAll(".nav-item").forEach(i=>i.classList.toggle("active",i.dataset.section===id));}
 
+    // AUTH TOGGLE
+    function showRegister(){
+        document.getElementById("loginForm").style.display="none";
+        document.getElementById("registerForm").style.display="block";
+        document.getElementById("loginError").style.display="none";
+        document.getElementById("regError").style.display="none";
+        document.getElementById("regSuccess").style.display="none";
+    }
+    function showLogin(){
+        document.getElementById("loginForm").style.display="block";
+        document.getElementById("registerForm").style.display="none";
+        document.getElementById("loginError").style.display="none";
+        document.getElementById("regError").style.display="none";
+        document.getElementById("regSuccess").style.display="none";
+    }
+
     // LOGIN
     async function fazerLogin(event){
         event.preventDefault();
-        const u=document.getElementById("username").value,p=document.getElementById("password").value,fd=new URLSearchParams();fd.append("username",u);fd.append("password",p);
+        const u=document.getElementById("username").value,p=document.getElementById("password").value,rm=document.getElementById("rememberMe").checked,fd=new URLSearchParams();fd.append("username",u);fd.append("password",p);fd.append("remember_me",rm?"true":"false");
         try{
             const r=await fetch(API_URL+"/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:fd.toString()});
-            if(r.ok){const d=await r.json();authToken=d.access_token;localStorage.setItem("authToken",authToken);document.getElementById("loginError").style.display="none";showDashboard();}
+            if(r.ok){
+                const d=await r.json();
+                authToken=d.access_token;
+                localStorage.setItem("authToken",authToken);
+                localStorage.setItem("userRole",d.user.role||"admin");
+                localStorage.setItem("userName",d.user.nome||"Admin");
+                document.getElementById("loginError").style.display="none";
+                showDashboard();
+            }
             else document.getElementById("loginError").style.display="block";
         }catch(e){document.getElementById("loginError").textContent="Erro de conexão.";document.getElementById("loginError").style.display="block";}
     }
 
-    function fazerLogout(){authToken=null;localStorage.removeItem("authToken");pinVerified=false;document.getElementById("loginScreen").style.display="flex";document.getElementById("dashboard").style.display="none";}
+    // REGISTER
+    async function fazerCadastro(event){
+        event.preventDefault();
+        const nome=document.getElementById("regNome").value.trim();
+        const email=document.getElementById("regEmail").value.trim();
+        const password=document.getElementById("regPassword").value;
+        const confirm=document.getElementById("regConfirm").value;
+        if(password!==confirm){document.getElementById("regError").textContent="Senhas não conferem.";document.getElementById("regError").style.display="block";return;}
+        document.getElementById("regError").style.display="none";
+        try{
+            const r=await fetch(API_URL+"/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nome,email,password})});
+            if(r.ok){
+                document.getElementById("regSuccess").style.display="block";
+                document.getElementById("regError").style.display="none";
+                document.getElementById("regNome").value="";
+                document.getElementById("regEmail").value="";
+                document.getElementById("regPassword").value="";
+                document.getElementById("regConfirm").value="";
+                setTimeout(()=>showLogin(),2000);
+            }else{const e=await r.json();document.getElementById("regError").textContent=e.detail||"Erro ao cadastrar.";document.getElementById("regError").style.display="block";}
+        }catch(e){document.getElementById("regError").textContent="Erro de conexão.";document.getElementById("regError").style.display="block";}
+    }
+
+    // GOOGLE LOGIN
+    function handleGoogleCredential(response){
+        const credential=response.credential;
+        fetch(API_URL+"/auth/google",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({credential,remember_me:document.getElementById("rememberMe").checked})})
+        .then(r=>r.json()).then(d=>{
+            if(d.access_token){
+                authToken=d.access_token;localStorage.setItem("authToken",authToken);
+                localStorage.setItem("userRole",d.user.role||"user");
+                localStorage.setItem("userName",d.user.nome||"Usuário");
+                document.getElementById("loginError").style.display="none";showDashboard();
+            }else{document.getElementById("loginError").textContent=d.detail||"Erro ao entrar com Google.";document.getElementById("loginError").style.display="block";}
+        }).catch(()=>{document.getElementById("loginError").textContent="Erro de conexão.";document.getElementById("loginError").style.display="block";});
+    }
+
+
+    function fazerLogout(){authToken=null;localStorage.removeItem("authToken");localStorage.removeItem("userRole");localStorage.removeItem("userName");pinVerified=false;document.getElementById("loginScreen").style.display="flex";document.getElementById("dashboard").style.display="none";showLogin();}
 
     function showDashboard(){
         document.getElementById("loginScreen").style.display="none";document.getElementById("dashboard").style.display="flex";setCurrentDate();
-        const td=authToken.split('.')[1];
-        if(td)try{
-            const p=JSON.parse(atob(td)),un=p.sub||"Admin";
-            document.getElementById("userName").textContent=un;
-            document.getElementById("userAvatar").textContent=un.charAt(0).toUpperCase();
-            document.getElementById("profileAvatar").textContent=un.charAt(0).toUpperCase();
-            document.getElementById("profileName").textContent=un;
-            document.getElementById("heroUserName").textContent=un.split(' ')[0];
-            document.getElementById("heroGreeting").textContent=getGreeting();
-        }catch(e){}
+        const userName=localStorage.getItem("userName")||"Admin";
+        const userRole=localStorage.getItem("userRole")||"admin";
+        document.getElementById("userName").textContent=userName;
+        document.getElementById("userAvatar").textContent=userName.charAt(0).toUpperCase();
+        document.getElementById("heroUserName").textContent=userName.split(' ')[0];
+        document.getElementById("heroGreeting").textContent=getGreeting();
+        const roleEl=document.querySelector(".user-role");
+        if(roleEl)roleEl.textContent=userRole==="admin"?"Administrador":"Usuário";
         showSection("homeSection");loadHomeStats();
     }
 
