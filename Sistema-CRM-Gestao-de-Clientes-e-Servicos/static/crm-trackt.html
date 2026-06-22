@@ -68,6 +68,8 @@
                         <input type="password" id="regConfirm" required minlength="6" autocomplete="new-password" placeholder="Repita a senha">
                     </div>
                     <button type="submit" class="btn btn-full btn-primary-lg">Criar Conta</button>
+                    <div class="divider"><span>ou</span></div>
+                    <div id="googleButtonRegister"></div>
                     <p class="error-msg" id="regError">Erro ao cadastrar.</p>
                     <p class="success-msg" id="regSuccess" style="display:none;">Conta criada com sucesso! Faça login.</p>
                 </form>
@@ -405,7 +407,13 @@
     <script>
     const API_URL = window.location.origin;
     let GOOGLE_CLIENT_ID = "";
-    fetch(API_URL+"/auth/google-client-id").then(r=>r.json()).then(d=>{GOOGLE_CLIENT_ID=d.client_id;if(GOOGLE_CLIENT_ID&&document.getElementById("googleButton")){google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleGoogleCredential});google.accounts.id.renderButton(document.getElementById("googleButton"),{theme:"outline",size:"large",type:"standard",text:"signin_with",width:"100%"});}}).catch(()=>{});
+    function renderGoogleButtons(){
+        if(!GOOGLE_CLIENT_ID) return;
+        const opts={theme:"outline",size:"large",type:"standard",text:"signin_with",width:"100%"};
+        if(document.getElementById("googleButton")) google.accounts.id.renderButton(document.getElementById("googleButton"),opts);
+        if(document.getElementById("googleButtonRegister")) google.accounts.id.renderButton(document.getElementById("googleButtonRegister"),opts);
+    }
+    fetch(API_URL+"/auth/google-client-id").then(r=>r.json()).then(d=>{GOOGLE_CLIENT_ID=d.client_id;if(GOOGLE_CLIENT_ID){google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleGoogleCredential});renderGoogleButtons();}}).catch(()=>{});
     let authToken = localStorage.getItem("authToken");
     let chartStatus = null, chartMetodo = null, chartClientes = null;
     let pendingAction = null;
