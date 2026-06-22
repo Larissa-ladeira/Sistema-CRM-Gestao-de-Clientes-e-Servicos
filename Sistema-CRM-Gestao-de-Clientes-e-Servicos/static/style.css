@@ -13,8 +13,8 @@ a { color: #667eea; text-decoration: none; }
 .login-brand h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
 .login-brand p { opacity: 0.8; font-size: 14px; }
 .login-container { width: 400px; max-width: 100%; }
-.login-container form { background: rgba(18, 18, 42, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 32px; border-radius: 16px; border: 1px solid rgba(30, 30, 66, 0.6); box-shadow: 0 25px 60px -12px rgba(0,0,0,0.4); animation: fadeIn 0.5s ease; position: relative; }
-body.light-theme .login-container form { background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: rgba(226, 232, 240, 0.8); }
+.login-container form { background: rgba(18, 18, 42, 0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 32px; border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.15); box-shadow: 0 25px 60px -12px rgba(0,0,0,0.4); animation: fadeIn 0.5s ease; position: relative; }
+body.light-theme .login-container form { background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-color: rgba(102, 126, 234, 0.2); }
 #dashboard { display: flex; min-height: 100vh; }
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
 .sidebar-overlay.active { display: block; }
