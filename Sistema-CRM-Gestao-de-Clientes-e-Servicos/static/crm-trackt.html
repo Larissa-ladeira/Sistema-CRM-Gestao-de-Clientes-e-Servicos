@@ -335,35 +335,23 @@
                         </div>
                         <div class="hero-date" id="heroDate"></div>
                     </div>
-                    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+                    <div class="stats-grid">
                         <div class="stat-card stat-total">
                             <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
                             <div class="stat-info"><span class="stat-label">Total de Clientes</span><span class="stat-value" id="statTotal">0</span></div>
                         </div>
-                        <div class="stat-card stat-active">
-                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-                            <div class="stat-info"><span class="stat-label">Funcionários Ativos</span><span class="stat-value" id="statFuncAtivos">0</span></div>
-                        </div>
-                        <div class="stat-card stat-inactive">
-                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></div>
-                            <div class="stat-info"><span class="stat-label">Vendas do Mês</span><span class="stat-value" id="statVendasMes">0</span></div>
-                        </div>
                         <div class="stat-card stat-active" onclick="showDashboardGeral()">
-                            <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
                             <div class="stat-info"><span class="stat-label">Receita do Mês</span><span class="stat-value" id="statReceitaMes">R$ 0</span></div>
                         </div>
-                        <div class="stat-card stat-inactive" onclick="showProdutos()">
-                            <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-                            <div class="stat-info"><span class="stat-label">Estoque Baixo</span><span class="stat-value" id="statEstoqueBaixo">0</span></div>
-                        </div>
-                        <div class="stat-card stat-total" onclick="showMetas()">
-                            <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+                        <div class="stat-card stat-inactive" onclick="showMetas()">
+                            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
                             <div class="stat-info"><span class="stat-label">Metas Ativas</span><span class="stat-value" id="statMetasAtivas">0</span></div>
                         </div>
                     </div>
                     <div class="quick-actions">
                         <h2 class="actions-title">Ações Rápidas</h2>
-                        <div class="actions-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+                        <div class="actions-grid">
                             <button class="action-btn action-primary" onclick="openModal()">
                                 <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
                                 <span class="action-text">Novo Cliente</span>
@@ -376,16 +364,8 @@
                                 <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
                                 <span class="action-text">Funcionários</span>
                             </button>
-                            <button class="action-btn action-orange" onclick="showProdutos()">
-                                <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div>
-                                <span class="action-text">Produtos</span>
-                            </button>
-                            <button class="action-btn" onclick="showMetas()" style="background:linear-gradient(135deg,#12122a,#1a1a3e);border:1px solid #1e1e42;">
-                                <div class="action-icon" style="background:linear-gradient(135deg,#ec4899,#be185d);color:white;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
-                                <span class="action-text">Metas</span>
-                            </button>
-                            <button class="action-btn" onclick="showDashboardGeral()" style="background:linear-gradient(135deg,#12122a,#1a1a3e);border:1px solid #1e1e42;">
-                                <div class="action-icon" style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:white;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                            <button class="action-btn action-orange" onclick="showDashboardGeral()">
+                                <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                                 <span class="action-text">Dashboard</span>
                             </button>
                         </div>
