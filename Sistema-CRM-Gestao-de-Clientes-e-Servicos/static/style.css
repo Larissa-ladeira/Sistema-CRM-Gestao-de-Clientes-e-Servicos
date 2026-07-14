@@ -13,8 +13,8 @@ a { color: #667eea; text-decoration: none; }
 .login-brand h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
 .login-brand p { opacity: 0.8; font-size: 14px; }
 .login-container { width: 400px; max-width: 100%; }
-.login-container form { background: transparent; padding: 32px; border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.15); box-shadow: 0 25px 60px -12px rgba(0,0,0,0.4); animation: fadeIn 0.5s ease; position: relative; }
-body.light-theme .login-container form { background: rgba(255, 255, 255, 0.08); border-color: rgba(102, 126, 234, 0.15); }
+.login-container form { background: rgba(10, 10, 26, 0.35); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 32px; border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.2); box-shadow: 0 25px 60px -12px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease; position: relative; }
+body.light-theme .login-container form { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-color: rgba(102, 126, 234, 0.2); }
 #dashboard { display: flex; min-height: 100vh; }
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
 .sidebar-overlay.active { display: block; }
@@ -159,6 +159,14 @@ body.light-theme .login-container form { background: rgba(255, 255, 255, 0.08); 
 .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 11px 14px; border: 1px solid #1e1e42; border-radius: 10px; font-size: 14px; color: #e2e8f0; background: rgba(10,10,26,0.5); transition: all 0.3s ease; font-family: inherit; }
 .form-group input::placeholder { color: #495670; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+.input-wrapper { position: relative; display: flex; align-items: center; }
+.input-wrapper .input-icon { position: absolute; left: 12px; width: 18px; height: 18px; color: #495670; pointer-events: none; transition: color 0.3s ease; z-index: 1; }
+.input-wrapper:focus-within .input-icon { color: #667eea; }
+.input-wrapper input { padding-left: 40px !important; }
+.input-wrapper input[type="password"] { padding-right: 40px !important; }
+.password-toggle { position: absolute; right: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #495670; cursor: pointer; border-radius: 8px; transition: all 0.3s ease; z-index: 1; }
+.password-toggle:hover { background: rgba(102,126,234,0.1); color: #667eea; }
+.password-toggle svg { width: 18px; height: 18px; }
 .filters-bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 20px; align-items: flex-end; }
 .filters-bar .form-group { margin-bottom: 0; min-width: 150px; flex: 1; }
 .search-card { margin-bottom: 24px; }
@@ -263,16 +271,20 @@ tr:hover td { background: rgba(102,126,234,0.06); }
 .error-msg { color: #f56565; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
 .success-msg { color: #48bb78; font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-toggle-text { text-align: center; margin-top: 20px; font-size: 13px; color: #64748b; }
-.auth-toggle-text a { color: #667eea; font-weight: 600; cursor: pointer; }
-.auth-toggle-text a:hover { text-decoration: underline; }
+.auth-toggle-text a { color: #667eea; font-weight: 600; cursor: pointer; transition: color 0.3s ease; }
+.auth-toggle-text a:hover { text-decoration: underline; color: #a855f7; }
 body.light-theme .auth-toggle-text { color: #94a3b8; }
+.form-fade-in { animation: formFadeIn 0.4s cubic-bezier(0.4,0,0.2,1); }
+@keyframes formFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .remember-group { margin-bottom: 4px !important; }
 .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: #495670; font-size: 12px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #1e1e42; }
 body.light-theme .divider { color: #94a3b8; }
 body.light-theme .divider::before, body.light-theme .divider::after { background: #e2e8f0; }
-#googleButton { width: 100%; display: flex; justify-content: center; }
-#googleButton iframe { max-width: 100% !important; }
+.google-btn-wrapper { width: 100%; display: flex; justify-content: center; padding: 1px; border-radius: 10px; background: linear-gradient(135deg, #667eea, #a855f7); transition: all 0.3s ease; }
+.google-btn-wrapper:hover { box-shadow: 0 4px 20px rgba(102,126,234,0.35); transform: translateY(-1px); }
+#googleButton, #googleButtonRegister { width: 100%; display: flex; justify-content: center; border-radius: 9px; overflow: hidden; }
+#googleButton iframe, #googleButtonRegister iframe { max-width: 100% !important; }
 .remember-label { display: flex !important; align-items: center; gap: 8px; cursor: pointer; font-size: 13px !important; font-weight: 500 !important; color: #8892b0 !important; text-transform: none !important; letter-spacing: normal !important; }
 .remember-checkbox { width: 16px !important; height: 16px !important; accent-color: #667eea; cursor: pointer; margin: 0; flex-shrink: 0; border-radius: 4px; }
 body.light-theme { background: #f0f2f5; color: #475569; }
@@ -320,6 +332,12 @@ body.light-theme .form-section h3 { color: #667eea; }
 body.light-theme .form-group label { color: #64748b; }
 body.light-theme .form-group input, body.light-theme .form-group select { background: #ffffff; border-color: #e2e8f0; color: #475569; }
 body.light-theme .form-group input::placeholder { color: #94a3b8; }
+body.light-theme .input-wrapper .input-icon { color: #94a3b8; }
+body.light-theme .input-wrapper:focus-within .input-icon { color: #667eea; }
+body.light-theme .password-toggle { color: #94a3b8; }
+body.light-theme .password-toggle:hover { background: #f1f5f9; color: #667eea; }
+body.light-theme .google-btn-wrapper { background: linear-gradient(135deg, #667eea, #a855f7); }
+body.light-theme .google-btn-wrapper:hover { box-shadow: 0 4px 20px rgba(102,126,234,0.25); }
 body.light-theme .modal-description { color: #64748b; }
 body.light-theme .modal-close { color: #94a3b8; }
 body.light-theme .modal-close:hover { background: #f1f5f9; color: #475569; }
