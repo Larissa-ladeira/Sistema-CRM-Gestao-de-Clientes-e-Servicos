@@ -170,6 +170,93 @@ def startup():
         conn.commit()
         print("✓ Tabela 'metas' criada/verificada.")
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_leads (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL,
+                valor NUMERIC(10,2) DEFAULT 0,
+                estagio VARCHAR(50) DEFAULT 'Prospecção',
+                responsavel_id INTEGER REFERENCES funcionarios(id),
+                probabilidade INTEGER DEFAULT 20,
+                notas TEXT DEFAULT '',
+                origem VARCHAR(100) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'pipeline_leads' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contatos (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                tipo VARCHAR(50) NOT NULL,
+                assunto VARCHAR(255) DEFAULT '',
+                descricao TEXT DEFAULT '',
+                data_contato TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                resultado VARCHAR(255) DEFAULT '',
+                proximo_passo VARCHAR(255) DEFAULT '',
+                data_proximo_contato DATE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'contatos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS compromissos (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT DEFAULT '',
+                data_inicio TIMESTAMP NOT NULL,
+                data_fim TIMESTAMP,
+                tipo VARCHAR(50) DEFAULT 'Reunião',
+                status VARCHAR(50) DEFAULT 'Pendente',
+                cliente_id INTEGER REFERENCES clientes(id),
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                local VARCHAR(255) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'compromissos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tickets (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT DEFAULT '',
+                prioridade VARCHAR(50) DEFAULT 'Média',
+                status VARCHAR(50) DEFAULT 'Aberto',
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_resolucao TIMESTAMP,
+                sla_horas INTEGER DEFAULT 24
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'tickets' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS campanhas (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                tipo VARCHAR(100) DEFAULT '',
+                data_inicio DATE,
+                data_fim DATE,
+                status VARCHAR(50) DEFAULT 'Ativa',
+                orcamento NUMERIC(10,2) DEFAULT 0,
+                descricao TEXT DEFAULT '',
+                leads_gerados INTEGER DEFAULT 0,
+                conversoes INTEGER DEFAULT 0
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'campanhas' criada/verificada.")
+
         cur.execute("SELECT COUNT(*) FROM servicos WHERE criado_em IS NULL OR criado_em < '2020-01-01'")
         count = cur.fetchone()[0]
         if count > 0:
@@ -1175,7 +1262,488 @@ def listar_categorias(token_data: dict = Depends(verify_token)):
             ORDER BY categoria ASC
         """)
         result = cur.fetchall()
-        return [r["categoria"] for r in result]
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── PIPELINE DE VENDAS ────────────────────────────
+
+class LeadSchema(BaseModel):
+    cliente_id: int | None = None
+    titulo: str
+    valor: float = 0
+    estagio: str = "Prospecção"
+    responsavel_id: int | None = None
+    probabilidade: int = 20
+    notas: str = ""
+    origem: str = ""
+
+@app.get("/pipeline")
+def listar_pipeline(token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        estagio = None
+        cur.execute("""
+            SELECT p.*, c.nome as cliente_nome, f.nome as responsavel_nome
+            FROM pipeline_leads p
+            LEFT JOIN clientes c ON p.cliente_id = c.id
+            LEFT JOIN funcionarios f ON p.responsavel_id = f.id
+            ORDER BY p.data_criacao DESC
+        """)
+        leads = [dict(r) for r in cur.fetchall()]
+        estagios = {}
+        for lead in leads:
+            e = lead["estagio"]
+            if e not in estagios:
+                estagios[e] = []
+            estagios[e].append(lead)
+        return {"leads": leads, "por_estagio": estagios}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/pipeline")
+def criar_lead(data: LeadSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO pipeline_leads (cliente_id, titulo, valor, estagio, responsavel_id, probabilidade, notas, origem)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.titulo, data.valor, data.estagio, data.responsavel_id, data.probabilidade, data.notas, data.origem))
+        lead = cur.fetchone()
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/pipeline/{lead_id}")
+def atualizar_lead(lead_id: int, data: LeadSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE pipeline_leads SET titulo=%s, valor=%s, estagio=%s, responsavel_id=%s,
+            probabilidade=%s, notas=%s, origem=%s, data_atualizacao=CURRENT_TIMESTAMP
+            WHERE id=%s RETURNING *
+        """, (data.titulo, data.valor, data.estagio, data.responsavel_id, data.probabilidade, data.notas, data.origem, lead_id))
+        lead = cur.fetchone()
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/pipeline/{lead_id}/estagio")
+def mover_lead(lead_id: int, estagio: str, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        prob_map = {"Prospecção": 20, "Qualificação": 40, "Proposta": 60, "Negociação": 80, "Fechamento": 95, "Ganho": 100, "Perdido": 0}
+        prob = prob_map.get(estagio, 20)
+        cur.execute("""
+            UPDATE pipeline_leads SET estagio=%s, probabilidade=%s, data_atualizacao=CURRENT_TIMESTAMP
+            WHERE id=%s RETURNING *
+        """, (estagio, prob, lead_id))
+        lead = cur.fetchone()
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/pipeline/{lead_id}")
+def deletar_lead(lead_id: int, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM pipeline_leads WHERE id=%s", (lead_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return {"mensagem": "Lead removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── CONTATOS ────────────────────────────
+
+class ContatoSchema(BaseModel):
+    cliente_id: int
+    tipo: str
+    assunto: str = ""
+    descricao: str = ""
+    funcionario_id: int | None = None
+    resultado: str = ""
+    proximo_passo: str = ""
+    data_proximo_contato: str | None = None
+
+@app.get("/contatos")
+def listar_contatos(cliente_id: int | None = None, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if cliente_id:
+            cur.execute("""
+                SELECT ct.*, c.nome as cliente_nome, f.nome as funcionario_nome
+                FROM contatos ct
+                LEFT JOIN clientes c ON ct.cliente_id = c.id
+                LEFT JOIN funcionarios f ON ct.funcionario_id = f.id
+                WHERE ct.cliente_id = %s
+                ORDER BY ct.data_contato DESC
+            """, (cliente_id,))
+        else:
+            cur.execute("""
+                SELECT ct.*, c.nome as cliente_nome, f.nome as funcionario_nome
+                FROM contatos ct
+                LEFT JOIN clientes c ON ct.cliente_id = c.id
+                LEFT JOIN funcionarios f ON ct.funcionario_id = f.id
+                ORDER BY ct.data_contato DESC LIMIT 200
+            """)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/contatos")
+def criar_contato(data: ContatoSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO contatos (cliente_id, tipo, assunto, descricao, funcionario_id, resultado, proximo_passo, data_proximo_contato)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.tipo, data.assunto, data.descricao, data.funcionario_id, data.resultado, data.proximo_passo, data.data_proximo_contato))
+        contato = cur.fetchone()
+        conn.commit()
+        return dict(contato)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/contatos/{contato_id}")
+def deletar_contato(contato_id: int, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM contatos WHERE id=%s", (contato_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Contato não encontrado")
+        conn.commit()
+        return {"mensagem": "Contato removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── COMPROMISSOS / AGENDA ────────────────────────────
+
+class CompromissoSchema(BaseModel):
+    titulo: str
+    descricao: str = ""
+    data_inicio: str
+    data_fim: str | None = None
+    tipo: str = "Reunião"
+    status: str = "Pendente"
+    cliente_id: int | None = None
+    funcionario_id: int | None = None
+    local: str = ""
+
+@app.get("/compromissos")
+def listar_compromissos(status: str | None = None, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT cp.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM compromissos cp
+            LEFT JOIN clientes c ON cp.cliente_id = c.id
+            LEFT JOIN funcionarios f ON cp.funcionario_id = f.id
+        """
+        params = []
+        if status:
+            query += " WHERE cp.status = %s"
+            params.append(status)
+        query += " ORDER BY cp.data_inicio ASC"
+        cur.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/compromissos")
+def criar_compromisso(data: CompromissoSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO compromissos (titulo, descricao, data_inicio, data_fim, tipo, status, cliente_id, funcionario_id, local)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.titulo, data.descricao, data.data_inicio, data.data_fim, data.tipo, data.status, data.cliente_id, data.funcionario_id, data.local))
+        compromisso = cur.fetchone()
+        conn.commit()
+        return dict(compromisso)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/compromissos/{comp_id}")
+def atualizar_compromisso(comp_id: int, data: CompromissoSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE compromissos SET titulo=%s, descricao=%s, data_inicio=%s, data_fim=%s,
+            tipo=%s, status=%s, cliente_id=%s, funcionario_id=%s, local=%s
+            WHERE id=%s RETURNING *
+        """, (data.titulo, data.descricao, data.data_inicio, data.data_fim, data.tipo, data.status, data.cliente_id, data.funcionario_id, data.local, comp_id))
+        compromisso = cur.fetchone()
+        if not compromisso:
+            raise HTTPException(status_code=404, detail="Compromisso não encontrado")
+        conn.commit()
+        return dict(compromisso)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/compromissos/{comp_id}")
+def deletar_compromisso(comp_id: int, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM compromissos WHERE id=%s", (comp_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Compromisso não encontrado")
+        conn.commit()
+        return {"mensagem": "Compromisso removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── TICKETS / SUPORTE ────────────────────────────
+
+class TicketSchema(BaseModel):
+    cliente_id: int | None = None
+    titulo: str
+    descricao: str = ""
+    prioridade: str = "Média"
+    status: str = "Aberto"
+    funcionario_id: int | None = None
+    sla_horas: int = 24
+
+@app.get("/tickets")
+def listar_tickets(status: str | None = None, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT t.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM tickets t
+            LEFT JOIN clientes c ON t.cliente_id = c.id
+            LEFT JOIN funcionarios f ON t.funcionario_id = f.id
+        """
+        params = []
+        if status:
+            query += " WHERE t.status = %s"
+            params.append(status)
+        query += " ORDER BY t.data_criacao DESC"
+        cur.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/tickets")
+def criar_ticket(data: TicketSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO tickets (cliente_id, titulo, descricao, prioridade, status, funcionario_id, sla_horas)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.titulo, data.descricao, data.prioridade, data.status, data.funcionario_id, data.sla_horas))
+        ticket = cur.fetchone()
+        conn.commit()
+        return dict(ticket)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/tickets/{ticket_id}")
+def atualizar_ticket(ticket_id: int, data: TicketSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        resolucao = "CURRENT_TIMESTAMP" if data.status == "Resolvido" else None
+        if data.status == "Resolvido":
+            cur.execute("""
+                UPDATE tickets SET titulo=%s, descricao=%s, prioridade=%s, status=%s,
+                funcionario_id=%s, sla_horas=%s, data_resolucao=CURRENT_TIMESTAMP
+                WHERE id=%s RETURNING *
+            """, (data.titulo, data.descricao, data.prioridade, data.status, data.funcionario_id, data.sla_horas, ticket_id))
+        else:
+            cur.execute("""
+                UPDATE tickets SET titulo=%s, descricao=%s, prioridade=%s, status=%s,
+                funcionario_id=%s, sla_horas=%s
+                WHERE id=%s RETURNING *
+            """, (data.titulo, data.descricao, data.prioridade, data.status, data.funcionario_id, data.sla_horas, ticket_id))
+        ticket = cur.fetchone()
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket não encontrado")
+        conn.commit()
+        return dict(ticket)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/tickets/{ticket_id}")
+def deletar_ticket(ticket_id: int, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM tickets WHERE id=%s", (ticket_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Ticket não encontrado")
+        conn.commit()
+        return {"mensagem": "Ticket removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── CAMPANHAS ────────────────────────────
+
+class CampanhaSchema(BaseModel):
+    nome: str
+    tipo: str = ""
+    data_inicio: str | None = None
+    data_fim: str | None = None
+    status: str = "Ativa"
+    orcamento: float = 0
+    descricao: str = ""
+
+@app.get("/campanhas")
+def listar_campanhas(token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM campanhas ORDER BY data_inicio DESC")
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/campanhas")
+def criar_campanha(data: CampanhaSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO campanhas (nome, tipo, data_inicio, data_fim, status, orcamento, descricao)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.nome, data.tipo, data.data_inicio, data.data_fim, data.status, data.orcamento, data.descricao))
+        campanha = cur.fetchone()
+        conn.commit()
+        return dict(campanha)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/campanhas/{camp_id}")
+def atualizar_campanha(camp_id: int, data: CampanhaSchema, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE campanhas SET nome=%s, tipo=%s, data_inicio=%s, data_fim=%s,
+            status=%s, orcamento=%s, descricao=%s WHERE id=%s RETURNING *
+        """, (data.nome, data.tipo, data.data_inicio, data.data_fim, data.status, data.orcamento, data.descricao, camp_id))
+        campanha = cur.fetchone()
+        if not campanha:
+            raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        conn.commit()
+        return dict(campanha)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/campanhas/{camp_id}")
+def deletar_campanha(camp_id: int, token_data: dict = Depends(verify_token)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM campanhas WHERE id=%s", (camp_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        conn.commit()
+        return {"mensagem": "Campanha removida"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── EXPORTAÇÃO CSV ────────────────────────────
+
+@app.get("/export/clientes-csv")
+def exportar_clientes_csv(token_data: dict = Depends(verify_token)):
+    from fastapi.responses import StreamingResponse
+    import csv, io
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM clientes ORDER BY nome")
+        clientes = cur.fetchall()
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(["ID", "Nome", "Documento", "WhatsApp", "Email"])
+        for c in clientes:
+            writer.writerow([c["id"], c["nome"], c["documento"], c["whatsapp"], c["email"]])
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=clientes.csv"})
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/export/vendas-csv")
+def exportar_vendas_csv(data_inicio: str = None, data_fim: str = None, token_data: dict = Depends(verify_token)):
+    from fastapi.responses import StreamingResponse
+    import csv, io
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT v.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM vendas v
+            LEFT JOIN clientes c ON v.cliente_id = c.id
+            LEFT JOIN funcionarios f ON v.funcionario_id = f.id
+            WHERE 1=1
+        """
+        params = []
+        if data_inicio:
+            query += " AND v.data_venda >= %s"
+            params.append(data_inicio)
+        if data_fim:
+            query += " AND v.data_venda <= %s"
+            params.append(data_fim + " 23:59:59")
+        query += " ORDER BY v.data_venda DESC"
+        cur.execute(query, params)
+        vendas = cur.fetchall()
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(["ID", "Cliente", "Funcionário", "Data", "Valor Total", "Desconto", "Método Pagamento", "Status"])
+        for v in vendas:
+            writer.writerow([v["id"], v.get("cliente_nome",""), v.get("funcionario_nome",""),
+                str(v["data_venda"])[:10] if v["data_venda"] else "", v["valor_total"], v["desconto"], v["metodo_pagamento"], v["status"]])
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=vendas.csv"})
     finally:
         cur.close()
         conn.close()

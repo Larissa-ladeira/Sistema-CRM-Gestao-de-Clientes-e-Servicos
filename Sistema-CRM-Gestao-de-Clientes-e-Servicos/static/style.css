@@ -585,3 +585,78 @@ body.light-theme .widget:hover { border-color: #cbd5e1; }
 body.light-theme .widget-header h3 { color: #334155; }
 body.light-theme .widget-header .period { background: #f1f5f9; border-color: #e2e8f0; color: #64748b; }
 body.light-theme .income-item .income-info .income-value { color: #334155; }
+
+/* ===== PIPELINE / KANBAN ===== */
+.kanban-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; min-height: 400px; }
+.kanban-column { flex: 1; min-width: 240px; max-width: 300px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; }
+.kanban-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.kanban-col-title { font-size: 13px; font-weight: 700; color: #fff; }
+.kanban-col-count { font-size: 11px; color: var(--text-secondary); }
+.kanban-cards { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.kanban-card { background: rgba(6,6,14,0.4); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; cursor: grab; transition: var(--transition); position: relative; }
+.kanban-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kanban-card-title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.kanban-card-client { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
+.kanban-card-value { font-size: 16px; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+.kanban-card-footer { display: flex; justify-content: space-between; align-items: center; }
+.kanban-card-origem { font-size: 10px; color: var(--text-muted); background: rgba(102,126,234,0.1); padding: 2px 8px; border-radius: 10px; }
+.kanban-prob { font-size: 11px; font-weight: 600; color: var(--accent); }
+.kanban-card-actions { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
+.kanban-card:hover .kanban-card-actions { display: flex; }
+.kanban-card-actions button { background: rgba(6,6,14,0.6); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; }
+.kanban-drop { min-height: 40px; border: 2px dashed transparent; margin: 0 10px 10px; border-radius: var(--radius-sm); transition: var(--transition); }
+.kanban-drop:hover { border-color: var(--accent); background: rgba(102,126,234,0.05); }
+
+/* ===== AGENDA ===== */
+.agenda-list { display: flex; flex-direction: column; gap: 12px; }
+.agenda-card { display: flex; gap: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; transition: var(--transition); }
+.agenda-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.agenda-card-left { flex-shrink: 0; }
+.agenda-date { width: 56px; text-align: center; background: rgba(102,126,234,0.1); border-radius: var(--radius-sm); padding: 10px 8px; }
+.agenda-day { display: block; font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; }
+.agenda-month { display: block; font-size: 10px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-top: 2px; }
+.agenda-card-body { flex: 1; }
+.agenda-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.agenda-card-top strong { font-size: 14px; color: #fff; }
+.agenda-card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.agenda-card-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; padding: 8px; background: rgba(6,6,14,0.2); border-radius: var(--radius-sm); }
+.agenda-card-actions { display: flex; gap: 6px; }
+
+/* ===== CONTATOS TABLE ===== */
+.badge-ligação, .badge-ligacao { background: rgba(59,130,246,0.1); color: #3b82f6; }
+.badge-email { background: rgba(168,85,247,0.1); color: #a855f7; }
+.badge-whatsapp { background: rgba(52,211,153,0.1); color: #10b981; }
+.badge-reunião, .badge-reuniao { background: rgba(251,191,36,0.1); color: #f59e0b; }
+.badge-visita { background: rgba(249,115,22,0.1); color: #f97316; }
+.badge-outro { background: rgba(100,116,139,0.1); color: #94a3b8; }
+
+/* ===== TICKETS ===== */
+.ticket-status-select { cursor: pointer; }
+
+/* ===== CAMPANHAS ===== */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.campanha-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; transition: var(--transition); }
+.campanha-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.campanha-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.campanha-card-header h4 { margin: 0; font-size: 15px; font-weight: 600; color: #fff; }
+.campanha-card-meta { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.campanha-tipo { font-size: 11px; background: rgba(102,126,234,0.1); color: var(--accent); padding: 2px 10px; border-radius: 12px; font-weight: 500; }
+.campanha-card-meta span { font-size: 12px; color: var(--text-secondary); }
+.campanha-desc { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.5; }
+.campanha-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.campanha-stat { text-align: center; padding: 8px 4px; background: rgba(6,6,14,0.3); border-radius: var(--radius-sm); }
+.campanha-stat-val { display: block; font-size: 14px; font-weight: 700; color: #fff; }
+.campanha-stat-lbl { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.campanha-card-actions { display: flex; gap: 8px; }
+
+/* ===== FORM CONTROL SMALL ===== */
+.form-control-sm { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-primary); background: rgba(6,6,14,0.5); font-family: inherit; }
+
+/* ===== RESPONSIVE KANBAN ===== */
+@media (max-width: 768px) {
+    .kanban-board { flex-direction: column; }
+    .kanban-column { max-width: 100%; min-width: 100%; }
+    .agenda-card { flex-direction: column; gap: 10px; }
+    .campanha-stats { grid-template-columns: repeat(2, 1fr); }
+    .cards-grid { grid-template-columns: 1fr; }
+}

@@ -153,14 +153,53 @@ def seed():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_leads (
+                id SERIAL PRIMARY KEY, cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL, valor NUMERIC(10,2) DEFAULT 0,
+                estagio VARCHAR(50) DEFAULT 'Prospecção', responsavel_id INTEGER REFERENCES funcionarios(id),
+                probabilidade INTEGER DEFAULT 20, notas TEXT DEFAULT '', origem VARCHAR(100) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP, data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS contatos (
+                id SERIAL PRIMARY KEY, cliente_id INTEGER REFERENCES clientes(id),
+                tipo VARCHAR(50) NOT NULL, assunto VARCHAR(255) DEFAULT '', descricao TEXT DEFAULT '',
+                data_contato TIMESTAMP DEFAULT CURRENT_TIMESTAMP, funcionario_id INTEGER REFERENCES funcionarios(id),
+                resultado VARCHAR(255) DEFAULT '', proximo_passo VARCHAR(255) DEFAULT '', data_proximo_contato DATE
+            );
+            CREATE TABLE IF NOT EXISTS compromissos (
+                id SERIAL PRIMARY KEY, titulo VARCHAR(255) NOT NULL, descricao TEXT DEFAULT '',
+                data_inicio TIMESTAMP NOT NULL, data_fim TIMESTAMP, tipo VARCHAR(50) DEFAULT 'Reunião',
+                status VARCHAR(50) DEFAULT 'Pendente', cliente_id INTEGER REFERENCES clientes(id),
+                funcionario_id INTEGER REFERENCES funcionarios(id), local VARCHAR(255) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS tickets (
+                id SERIAL PRIMARY KEY, cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL, descricao TEXT DEFAULT '', prioridade VARCHAR(50) DEFAULT 'Média',
+                status VARCHAR(50) DEFAULT 'Aberto', funcionario_id INTEGER REFERENCES funcionarios(id),
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP, data_resolucao TIMESTAMP, sla_horas INTEGER DEFAULT 24
+            );
+            CREATE TABLE IF NOT EXISTS campanhas (
+                id SERIAL PRIMARY KEY, nome VARCHAR(255) NOT NULL, tipo VARCHAR(100) DEFAULT '',
+                data_inicio DATE, data_fim DATE, status VARCHAR(50) DEFAULT 'Ativa',
+                orcamento NUMERIC(10,2) DEFAULT 0, descricao TEXT DEFAULT '',
+                leads_gerados INTEGER DEFAULT 0, conversoes INTEGER DEFAULT 0
+            );
+        """)
+        conn.commit()
+
         print("Limpando tabelas existentes...")
-        for tabela in ["itens_venda", "vendas", "metas", "financeiro", "servicos",
+        for tabela in ["pipeline_leads", "contatos", "compromissos", "tickets", "campanhas",
+                        "itens_venda", "vendas", "metas", "financeiro", "servicos",
                         "produtos", "funcionarios", "departamentos", "clientes"]:
             cur.execute(f"DELETE FROM {tabela}")
 
         for seq in ["clientes_id_seq", "servicos_id_seq", "financeiro_id_seq",
                      "departamentos_id_seq", "funcionarios_id_seq", "produtos_id_seq",
-                     "vendas_id_seq", "itens_venda_id_seq", "metas_id_seq"]:
+                     "vendas_id_seq", "itens_venda_id_seq", "metas_id_seq",
+                     "pipeline_leads_id_seq", "contatos_id_seq", "compromissos_id_seq",
+                     "tickets_id_seq", "campanhas_id_seq"]:
             try:
                 cur.execute(f"ALTER SEQUENCE {seq} RESTART WITH 1")
             except Exception:
@@ -267,7 +306,7 @@ def seed():
             cur.execute("SELECT status, valor_total, criado_em FROM servicos WHERE id = %s", (sid,))
             s = cur.fetchone()
             if s and s[0] == "Finalizado":
-                valor_pago = round(s[1] * random.uniform(0.8, 1.0), 2)
+                valor_pago = round(float(s[1]) * random.uniform(0.8, 1.0), 2)
                 metodo = random.choice(metodos_pagamento)
                 data_pag = s[2] + timedelta(days=random.randint(0, 30))
                 cur.execute(
@@ -410,6 +449,142 @@ def seed():
         print(f"  - {len(venda_ids)} vendas")
         print(f"  - {itens_count} itens de venda")
         print(f"  - {metas_count} metas")
+
+        cur.execute("DELETE FROM pipeline_leads")
+        cur.execute("DELETE FROM contatos")
+        cur.execute("DELETE FROM compromissos")
+        cur.execute("DELETE FROM tickets")
+        cur.execute("DELETE FROM campanhas")
+        conn.commit()
+
+        cur.execute("SELECT id FROM clientes")
+        cli_ids = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT id FROM funcionarios")
+        func_ids = [r[0] for r in cur.fetchall()]
+
+        estagios = ["Prospecção", "Qualificação", "Proposta", "Negociação", "Fechamento", "Ganho", "Perdido"]
+        origens = ["Instagram", "Indicação", "Google Ads", "LinkedIn", "Site", "Evento", "WhatsApp"]
+        lead_titulos = [
+            "Site Institucional", "App Mobile", "Sistema de Gestão", "E-commerce", "Landing Page",
+            "Integração API", "Consultoria Digital", "Campanha Google", "Redes Sociais", "Automação de Marketing",
+            "Dashboard Analytics", "Portal do Cliente", "Chatbot WhatsApp", "Sistema de Agendamento", "CRM Customizado"
+        ]
+        pipeline_count = 0
+        for i in range(20):
+            estagio = random.choice(estagios)
+            prob = {"Prospecção": 20, "Qualificação": 40, "Proposta": 60, "Negociação": 80, "Fechamento": 95, "Ganho": 100, "Perdido": 0}[estagio]
+            cur.execute("""
+                INSERT INTO pipeline_leads (cliente_id, titulo, valor, estagio, responsavel_id, probabilidade, notas, origem, data_criacao)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                random.choice(cli_ids), random.choice(lead_titulos), round(random.uniform(500, 25000), 2),
+                estagio, random.choice(func_ids), prob,
+                f"Lead via {random.choice(origens)}", random.choice(origens),
+                datetime.now() - timedelta(days=random.randint(1, 90))
+            ))
+            pipeline_count += 1
+        conn.commit()
+        print(f"  - {pipeline_count} leads no pipeline")
+
+        tipos_contato = ["Ligação", "Email", "WhatsApp", "Reunião", "Visita", "Outro"]
+        assuntos = ["Follow-up", "Apresentação", "Proposta Comercial", "Suporte", "Reunião de Alinhamento", "Cobrança", "Pesquisa de Satisfação", "Convite para Evento"]
+        resultados = ["Cliente interessado", "Agendou reunião", "Proposta enviada", "Aguardando retorno", "Fechamento confirmado", "Sem interesse", "Retornar em 30 dias"]
+        proximos = ["Enviar proposta", "Ligar amanhã", "Agendar demo", "Enviar material", "Confirmar pagamento", "Marcar reunião", "Envio de orçamento"]
+        contatos_count = 0
+        for i in range(30):
+            dt = datetime.now() - timedelta(days=random.randint(0, 60), hours=random.randint(8, 18))
+            prox_dt = (dt + timedelta(days=random.randint(1, 15))).date() if random.random() > 0.3 else None
+            cur.execute("""
+                INSERT INTO contatos (cliente_id, tipo, assunto, descricao, data_contato, funcionario_id, resultado, proximo_passo, data_proximo_contato)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                random.choice(cli_ids), random.choice(tipos_contato), random.choice(assuntos),
+                f"Contato sobre {random.choice(lead_titulos).lower()}", dt,
+                random.choice(func_ids), random.choice(resultados), random.choice(proximos), prox_dt
+            ))
+            contatos_count += 1
+        conn.commit()
+        print(f"  - {contatos_count} contatos")
+
+        tipos_comp = ["Reunião", "Ligação", "Follow-up", "Visita", "Outro"]
+        locais = ["Sala de Reuniões", "Zoom", "Google Meet", "Escritório do Cliente", "Café", "Presencial", "Online"]
+        titulos_comp = [
+            "Reunião de alinhamento", "Apresentação da proposta", "Follow-up pós-reunião", "Reunião mensal",
+            "Demo do produto", "Reunião de encerramento", "Visita técnica", "Alinhamento de escopo",
+            "Revisão de contrato", "Treinamento", "Palestra interna", "Reunião de results"
+        ]
+        comp_count = 0
+        for i in range(25):
+            dt_inicio = datetime.now() + timedelta(days=random.randint(-30, 30), hours=random.randint(8, 18))
+            dt_fim = dt_inicio + timedelta(hours=random.choice([1, 2, 3]))
+            status = random.choice(["Pendente", "Pendente", "Pendente", "Concluído", "Cancelado"])
+            cur.execute("""
+                INSERT INTO compromissos (titulo, descricao, data_inicio, data_fim, tipo, status, cliente_id, funcionario_id, local)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                random.choice(titulos_comp), f"Detalhes da reunião #{i+1}", dt_inicio, dt_fim,
+                random.choice(tipos_comp), status, random.choice(cli_ids), random.choice(func_ids),
+                random.choice(locais)
+            ))
+            comp_count += 1
+        conn.commit()
+        print(f"  - {comp_count} compromissos")
+
+        titulos_ticket = [
+            "Erro ao gerar relatório", "Sistema lento", "Acesso negado", "E-mail não enviado",
+            "Problema no pagamento", "Relatório com dados incorretos", "Funcionalidade não encontrada",
+            "Erro 500 no login", "Dashboard não carrega", "Relatório em branco"
+        ]
+        desc_ticket = [
+            "Cliente reportou erro ao gerar relatório mensal", "Sistema travando após login",
+            "Não consegue acessar a plataforma", "E-mails automáticos não estão sendo enviados",
+            "Pagamento não foi processado corretamente", "Dados inconsistentes no relatório",
+            "Botão de exportar não funciona", "Erro ao fazer login com Google",
+            "Dashboard trava ao carregar gráficos", "Relatório financeiro vazio"
+        ]
+        tickets_count = 0
+        for i in range(15):
+            prio = random.choice(["Baixa", "Média", "Média", "Alta", "Urgente"])
+            sla = {"Baixa": 72, "Média": 48, "Alta": 24, "Urgente": 4}[prio]
+            status = random.choice(["Aberto", "Aberto", "Em Andamento", "Resolvido", "Fechado"])
+            dt_criacao = datetime.now() - timedelta(days=random.randint(0, 30), hours=random.randint(8, 18))
+            resolucao = (dt_criacao + timedelta(hours=random.randint(1, sla))) if status in ["Resolvido", "Fechado"] else None
+            cur.execute("""
+                INSERT INTO tickets (cliente_id, titulo, descricao, prioridade, status, funcionario_id, data_criacao, data_resolucao, sla_horas)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                random.choice(cli_ids), random.choice(titulos_ticket), random.choice(desc_ticket),
+                prio, status, random.choice(func_ids), dt_criacao, resolucao, sla
+            ))
+            tickets_count += 1
+        conn.commit()
+        print(f"  - {tickets_count} tickets")
+
+        nomes_campanha = [
+            "Black Friday 2026", "Semana do Empreendedor", "Happy Hour Digital",
+            "Captação LinkedIn Q1", "Indicação Premiada", "Lançamento Produto X",
+            "Webinar Gratuito", "Evento Presencial SP", "Captação Google Ads"
+        ]
+        tipos_campanha = ["Redes Sociais", "Google Ads", "Email Marketing", "Indicação", "Evento", "LinkedIn"]
+        camp_count = 0
+        for nome in nomes_campanha:
+            leads = random.randint(10, 100)
+            conv = random.randint(0, leads // 3)
+            dt_ini = (datetime.now() - timedelta(days=random.randint(10, 90))).date()
+            dt_fim = (datetime.now() + timedelta(days=random.randint(10, 60))).date()
+            cur.execute("""
+                INSERT INTO campanhas (nome, tipo, data_inicio, data_fim, status, orcamento, descricao, leads_gerados, conversoes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                nome, random.choice(tipos_campanha), dt_ini, dt_fim,
+                random.choice(["Ativa", "Ativa", "Pausada", "Concluída"]),
+                round(random.uniform(500, 15000), 2),
+                f"Campanha de captação via {random.choice(tipos_campanha).lower()}", leads, conv
+            ))
+            camp_count += 1
+        conn.commit()
+        print(f"  - {camp_count} campanhas")
+
         print("=" * 50)
 
     except Exception as e:

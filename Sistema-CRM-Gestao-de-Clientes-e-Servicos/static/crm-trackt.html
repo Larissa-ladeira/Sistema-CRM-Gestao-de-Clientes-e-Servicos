@@ -271,6 +271,26 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                     Produtos
                 </button>
+                <button class="nav-item" data-section="pipelineSection" onclick="showPipeline()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="8" rx="1"/></svg>
+                    Pipeline
+                </button>
+                <button class="nav-item" data-section="agendaSection" onclick="showAgenda()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Agenda
+                </button>
+                <button class="nav-item" data-section="contatosSection" onclick="showContatos()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                    Contatos
+                </button>
+                <button class="nav-item" data-section="ticketsSection" onclick="showTickets()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Tickets
+                </button>
+                <button class="nav-item" data-section="campanhasSection" onclick="showCampanhas()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Campanhas
+                </button>
                 <div class="nav-section" style="margin-top:8px;">Existentes</div>
                 <button class="nav-item" data-section="buscaSection" onclick="showClientes()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -531,6 +551,58 @@
                     </div></div>
                     <div id="desempenhoContent"></div>
                 </div>
+                <!-- PIPELINE -->
+                <div id="pipelineSection" class="section">
+                    <div class="section-header">
+                        <div class="header-left"><h2>Pipeline de Vendas</h2><p class="section-subtitle">Acompanhe seus leads por estágio</p></div>
+                        <div class="header-actions">
+                            <button class="btn btn-primary" onclick="openLeadModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo Lead</button>
+                        </div>
+                    </div>
+                    <div id="pipelineKanban" class="kanban-board"></div>
+                </div>
+                <!-- AGENDA -->
+                <div id="agendaSection" class="section">
+                    <div class="section-header">
+                        <div class="header-left"><h2>Agenda</h2><p class="section-subtitle">Compromissos e reuniões</p></div>
+                        <div class="header-actions">
+                            <select id="filtroAgendaStatus" class="form-control-sm" onchange="loadCompromissos()"><option value="">Todos</option><option value="Pendente">Pendentes</option><option value="Concluído">Concluídos</option><option value="Cancelado">Cancelados</option></select>
+                            <button class="btn btn-primary" onclick="openCompromissoModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>
+                        </div>
+                    </div>
+                    <div id="agendaContent" class="agenda-list"></div>
+                </div>
+                <!-- CONTATOS -->
+                <div id="contatosSection" class="section">
+                    <div class="section-header">
+                        <div class="header-left"><h2>Histórico de Contatos</h2><p class="section-subtitle">Ligações, emails, WhatsApp e reuniões</p></div>
+                        <div class="header-actions">
+                            <button class="btn btn-primary" onclick="openContatoModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo Contato</button>
+                        </div>
+                    </div>
+                    <div id="contatosContent" class="card"><div class="table-wrapper"><table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Assunto</th><th>Resultado</th><th>Próximo Passo</th><th>Funcionário</th><th></th></tr></thead><tbody id="contatosBody"></tbody></table></div></div>
+                </div>
+                <!-- TICKETS -->
+                <div id="ticketsSection" class="section">
+                    <div class="section-header">
+                        <div class="header-left"><h2>Tickets de Suporte</h2><p class="section-subtitle">Atendimento e chamados</p></div>
+                        <div class="header-actions">
+                            <select id="filtroTicketStatus" class="form-control-sm" onchange="loadTickets()"><option value="">Todos</option><option value="Aberto">Abertos</option><option value="Em Andamento">Em Andamento</option><option value="Resolvido">Resolvidos</option><option value="Fechado">Fechados</option></select>
+                            <button class="btn btn-primary" onclick="openTicketModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo Ticket</button>
+                        </div>
+                    </div>
+                    <div id="ticketsContent" class="card"><div class="table-wrapper"><table><thead><tr><th>#</th><th>Título</th><th>Cliente</th><th>Prioridade</th><th>Status</th><th>SLA</th><th>Responsável</th><th>Criado</th><th></th></tr></thead><tbody id="ticketsBody"></tbody></table></div></div>
+                </div>
+                <!-- CAMPANHAS -->
+                <div id="campanhasSection" class="section">
+                    <div class="section-header">
+                        <div class="header-left"><h2>Campanhas</h2><p class="section-subtitle">Marketing e aquisição de leads</p></div>
+                        <div class="header-actions">
+                            <button class="btn btn-primary" onclick="openCampanhaModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Campanha</button>
+                        </div>
+                    </div>
+                    <div id="campanhasContent" class="cards-grid"></div>
+                </div>
             </div>
         </main>
     </div>
@@ -749,6 +821,142 @@
             </form>
         </div>
     </div>
+    <!-- MODAL LEAD -->
+    <div class="modal-overlay" id="modalLeadOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalLeadTitle">Novo Lead</h2>
+                <button class="modal-close" onclick="closeLeadModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <form id="leadForm" onsubmit="saveLead(event)">
+                <input type="hidden" id="leadId" value="">
+                <div class="form-group"><label>Cliente</label><select id="leadCliente"></select></div>
+                <div class="form-group"><label>Título</label><input type="text" id="leadTitulo" required placeholder="Ex: Proposta para site"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Valor (R$)</label><input type="number" id="leadValor" step="0.01" min="0" placeholder="0,00"></div>
+                    <div class="form-group"><label>Estágio</label><select id="leadEstagio"><option>Prospecção</option><option>Qualificação</option><option>Proposta</option><option>Negociação</option><option>Fechamento</option><option>Ganho</option><option>Perdido</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Responsável</label><select id="leadResponsavel"></select></div>
+                    <div class="form-group"><label>Origem</label><input type="text" id="leadOrigem" placeholder="Ex: Instagram, Indicação"></div>
+                </div>
+                <div class="form-group"><label>Notas</label><textarea id="leadNotas" rows="3" placeholder="Observações sobre o lead..."></textarea></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeLeadModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- MODAL COMPROMISSO -->
+    <div class="modal-overlay" id="modalCompromissoOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalCompTitle">Novo Compromisso</h2>
+                <button class="modal-close" onclick="closeCompromissoModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <form id="compromissoForm" onsubmit="saveCompromisso(event)">
+                <input type="hidden" id="compId" value="">
+                <div class="form-group"><label>Título</label><input type="text" id="compTitulo" required placeholder="Ex: Reunião com cliente"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Data/Hora Início</label><input type="datetime-local" id="compDataInicio" required></div>
+                    <div class="form-group"><label>Data/Hora Fim</label><input type="datetime-local" id="compDataFim"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Tipo</label><select id="compTipo"><option>Reunião</option><option>Ligação</option><option>Follow-up</option><option>Visita</option><option>Outro</option></select></div>
+                    <div class="form-group"><label>Status</label><select id="compStatus"><option>Pendente</option><option>Concluído</option><option>Cancelado</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Cliente</label><select id="compCliente"></select></div>
+                    <div class="form-group"><label>Responsável</label><select id="compFuncionario"></select></div>
+                </div>
+                <div class="form-group"><label>Local</label><input type="text" id="compLocal" placeholder="Ex: Sala de reuniões, Zoom"></div>
+                <div class="form-group"><label>Descrição</label><textarea id="compDescricao" rows="2" placeholder="Detalhes..."></textarea></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeCompromissoModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- MODAL CONTATO -->
+    <div class="modal-overlay" id="modalContatoOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Registrar Contato</h2>
+                <button class="modal-close" onclick="closeContatoModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <form id="contatoForm" onsubmit="saveContato(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Cliente</label><select id="contatoCliente" required></select></div>
+                    <div class="form-group"><label>Tipo</label><select id="contatoTipo"><option>Ligação</option><option>Email</option><option>WhatsApp</option><option>Reunião</option><option>Visita</option><option>Outro</option></select></div>
+                </div>
+                <div class="form-group"><label>Assunto</label><input type="text" id="contatoAssunto" placeholder="Ex: Follow-up pós-proposta"></div>
+                <div class="form-group"><label>Descrição</label><textarea id="contatoDescricao" rows="3" placeholder="Detalhes do contato..."></textarea></div>
+                <div class="form-group"><label>Resultado</label><input type="text" id="contatoResultado" placeholder="Ex: Cliente interessado, agendou reunião"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Próximo Passo</label><input type="text" id="contatoProximoPasso" placeholder="Ex: Enviar proposta"></div>
+                    <div class="form-group"><label>Data Próximo Contato</label><input type="date" id="contatoDataProximo"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeContatoModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- MODAL TICKET -->
+    <div class="modal-overlay" id="modalTicketOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTicketTitle">Novo Ticket</h2>
+                <button class="modal-close" onclick="closeTicketModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <form id="ticketForm" onsubmit="saveTicket(event)">
+                <input type="hidden" id="ticketId" value="">
+                <div class="form-row">
+                    <div class="form-group"><label>Cliente</label><select id="ticketCliente"></select></div>
+                    <div class="form-group"><label>Prioridade</label><select id="ticketPrioridade"><option value="Baixa">Baixa</option><option value="Média" selected>Média</option><option value="Alta">Alta</option><option value="Urgente">Urgente</option></select></div>
+                </div>
+                <div class="form-group"><label>Título</label><input type="text" id="ticketTitulo" required placeholder="Ex: Erro no sistema"></div>
+                <div class="form-group"><label>Descrição</label><textarea id="ticketDescricao" rows="3" placeholder="Detalhes do problema..."></textarea></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Responsável</label><select id="ticketFuncionario"></select></div>
+                    <div class="form-group"><label>SLA (horas)</label><input type="number" id="ticketSla" min="1" value="24"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeTicketModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- MODAL CAMPANHA -->
+    <div class="modal-overlay" id="modalCampanhaOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalCampTitle">Nova Campanha</h2>
+                <button class="modal-close" onclick="closeCampanhaModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <form id="campanhaForm" onsubmit="saveCampanha(event)">
+                <input type="hidden" id="campId" value="">
+                <div class="form-group"><label>Nome</label><input type="text" id="campNome" required placeholder="Ex: Black Friday 2026"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Tipo</label><select id="campTipo"><option value="">Selecione...</option><option>Email Marketing</option><option>Redes Sociais</option><option>Google Ads</option><option>Indicação</option><option>Evento</option><option>Outro</option></select></div>
+                    <div class="form-group"><label>Orçamento (R$)</label><input type="number" id="campOrcamento" step="0.01" min="0" placeholder="0,00"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Data Início</label><input type="date" id="campDataInicio"></div>
+                    <div class="form-group"><label>Data Fim</label><input type="date" id="campDataFim"></div>
+                </div>
+                <div class="form-group"><label>Descrição</label><textarea id="campDescricao" rows="3" placeholder="Detalhes da campanha..."></textarea></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeCampanhaModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script>
     const API_URL = window.location.origin;
     let GOOGLE_CLIENT_ID = "";
@@ -847,6 +1055,11 @@
     function showVendas(){showSection("vendasSection");loadVendas();}
     function showProdutos(){showSection("produtosSection");loadProdutos();}
     function showDesempenho(){showSection("desempenhoSection");loadDesempenho();}
+    function showPipeline(){showSection("pipelineSection");loadPipeline();}
+    function showAgenda(){showSection("agendaSection");loadCompromissos();}
+    function showContatos(){showSection("contatosSection");loadContatos();}
+    function showTickets(){showSection("ticketsSection");loadTickets();}
+    function showCampanhas(){showSection("campanhasSection");loadCampanhas();}
 
     function showFiltroServicos(params){showServicos();const p=new URLSearchParams(params);if(p.has("status"))document.getElementById("filtroServicoStatus").value=p.get("status");if(p.has("cliente_busca"))document.getElementById("filtroServicoCliente").value=p.get("cliente_busca");loadServicos();}
     function showFiltroFinanceiro(params){showFinanceiro();const p=new URLSearchParams(params);if(p.has("metodo"))document.getElementById("filtroFinMetodo").value=p.get("metodo");if(p.has("status"))document.getElementById("filtroFinStatus").value=p.get("status");loadFinanceiro();}
@@ -1316,11 +1529,185 @@
     }
     document.getElementById("pinModalOverlay").addEventListener("click",function(e){if(e.target===this)closePinModal();});
     document.getElementById("pinInput").addEventListener("keypress",function(e){if(e.key==="Enter")verificarPin(e);});
+    document.getElementById("modalLeadOverlay").addEventListener("click",function(e){if(e.target===this)closeLeadModal();});
+    document.getElementById("modalCompromissoOverlay").addEventListener("click",function(e){if(e.target===this)closeCompromissoModal();});
+    document.getElementById("modalContatoOverlay").addEventListener("click",function(e){if(e.target===this)closeContatoModal();});
+    document.getElementById("modalTicketOverlay").addEventListener("click",function(e){if(e.target===this)closeTicketModal();});
+    document.getElementById("modalCampanhaOverlay").addEventListener("click",function(e){if(e.target===this)closeCampanhaModal();});
     function resetPinSession(){pinVerified=false;updatePinBadge();}
     function updatePinBadge(){const b=document.getElementById("pinStatusBadge");if(!b)return;const t=b.querySelector(".pin-text");if(pinVerified){b.classList.remove("locked");b.classList.add("unlocked");t.textContent="Desbloqueado";}else{b.classList.remove("unlocked");b.classList.add("locked");t.textContent="Bloqueado";}}
     function showListaCompleta(){if(!pinVerified){pendingAction=()=>loadClientes();openPinModal();return;}loadClientes();showSection("clientesSection");}
     function enviarEmail(email,nome,assuntoPadrao,corpoPadrao){if(!email||email==="-"){alert("Cliente n\u00e3o possui email cadastrado.");return;}var a=assuntoPadrao||"Contato CRM Trackt";var c=corpoPadrao||"Ol\u00e1 "+nome+",";window.open("mailto:"+email+"?subject="+encodeURIComponent(a)+"&body="+encodeURIComponent(c));}
     async function enviarEmailParaTodos(){if(!pinVerified){pendingAction=()=>enviarEmailParaTodos();openPinModal();return;}try{var r=await fetch(API_URL+"/clientes",{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}var c=await r.json();var emails=c.map(function(cl){return cl.email;}).filter(function(e){return e&&e!=="-";});if(emails.length===0){alert("Nenhum cliente com email cadastrado.");return;}window.open("mailto:?bcc="+encodeURIComponent(emails.join(","))+"&subject="+encodeURIComponent("Comunicado CRM Trackt")+"&body="+encodeURIComponent("Ol\u00e1,"));}catch(e){alert("Erro ao carregar clientes.");}}
+
+    // ═══════════════════════════════════════ PIPELINE ═══════════════════════════════════════
+    const ESTAGIOS = ["Prospecção","Qualificação","Proposta","Negociação","Fechamento","Ganho","Perdido"];
+    const ESTAGIO_COLORS = {"Prospecção":"#667eea","Qualificação":"#f59e0b","Proposta":"#3b82f6","Negociação":"#8b5cf6","Fechamento":"#10b981","Ganho":"#22c55e","Perdido":"#ef4444"};
+    async function loadPipeline(){
+        try{
+            const r = await fetch(API_URL+"/pipeline",{headers:{"Authorization":"Bearer "+authToken}});
+            if(r.status===401){fazerLogout();return;}
+            const d = await r.json();
+            const kb = document.getElementById("pipelineKanban");
+            kb.innerHTML = ESTAGIOS.map(e => {
+                const leads = (d.por_estagio[e]||[]);
+                const total = leads.reduce((a,l)=>a+parseFloat(l.valor||0),0);
+                return '<div class="kanban-column"><div class="kanban-header" style="border-top:3px solid '+ESTAGIO_COLORS[e]+'"><span class="kanban-col-title">'+e+'</span><span class="kanban-col-count">'+leads.length+' • '+fmt(total)+'</span></div><div class="kanban-cards">'+leads.map(l=>'<div class="kanban-card" draggable="true" ondragstart="dragLead(event,'+l.id+')" data-id="'+l.id+'"><div class="kanban-card-title">'+l.titulo+'</div><div class="kanban-card-client">'+(l.cliente_nome||"Sem cliente")+'</div><div class="kanban-card-value">'+fmt(l.valor)+'</div><div class="kanban-card-footer"><span class="kanban-card-origem">'+(l.origem||"-")+'</span><span class="kanban-prob">'+l.probabilidade+'%</span></div><div class="kanban-card-actions"><button onclick="editLead('+l.id+')" title="Editar">✏️</button><button onclick="deleteLead('+l.id+')" title="Excluir">🗑️</button></div></div>').join("")+'</div><div class="kanban-drop" ondragover="event.preventDefault()" ondrop="dropLead(event,\''+e+'\')"></div></div>';
+            }).join("");
+        }catch(e){console.error(e);}
+    }
+    let dragLeadId = null;
+    function dragLead(e,id){dragLeadId=id;e.dataTransfer.effectAllowed="move";}
+    async function dropLead(e,estagio){
+        e.preventDefault();
+        if(!dragLeadId)return;
+        try{
+            await fetch(API_URL+"/pipeline/"+dragLeadId+"/estagio?estagio="+encodeURIComponent(estagio),{method:"PUT",headers:{"Authorization":"Bearer "+authToken}});
+            loadPipeline();
+        }catch(e){console.error(e);}
+        dragLeadId=null;
+    }
+    async function loadLeadSelects(){
+        if(!allClientes.length){try{const r=await fetch(API_URL+"/clientes",{headers:{"Authorization":"Bearer "+authToken}});if(r.ok)allClientes=await r.json();}catch(e){}}
+        if(!allFuncionarios.length){try{const r=await fetch(API_URL+"/funcionarios",{headers:{"Authorization":"Bearer "+authToken}});if(r.ok)allFuncionarios=await r.json();}catch(e){}}
+        const cs=document.getElementById("leadCliente");cs.innerHTML='<option value="">Nenhum</option>'+allClientes.map(c=>'<option value="'+c.id+'">'+c.nome+'</option>').join("");
+        const fs=document.getElementById("leadResponsavel");fs.innerHTML='<option value="">Nenhum</option>'+allFuncionarios.map(f=>'<option value="'+f.id+'">'+f.nome+'</option>').join("");
+    }
+    function openLeadModal(lead){loadLeadSelects();document.getElementById("leadId").value="";document.getElementById("leadTitulo").value="";document.getElementById("leadValor").value="";document.getElementById("leadEstagio").value="Prospecção";document.getElementById("leadOrigem").value="";document.getElementById("leadNotas").value="";document.getElementById("modalLeadTitle").textContent="Novo Lead";document.getElementById("modalLeadOverlay").classList.add("active");}
+    function closeLeadModal(){document.getElementById("modalLeadOverlay").classList.remove("active");}
+    async function editLead(id){
+        try{const r=await fetch(API_URL+"/pipeline",{headers:{"Authorization":"Bearer "+authToken}});const d=await r.json();const l=d.leads.find(x=>x.id===id);if(!l)return;
+        loadLeadSelects();document.getElementById("leadId").value=l.id;document.getElementById("leadTitulo").value=l.titulo;document.getElementById("leadValor").value=l.valor;document.getElementById("leadEstagio").value=l.estagio;document.getElementById("leadResponsavel").value=l.responsavel_id||"";document.getElementById("leadOrigem").value=l.origem||"";document.getElementById("leadNotas").value=l.notas||"";document.getElementById("modalLeadTitle").textContent="Editar Lead";document.getElementById("modalLeadOverlay").classList.add("active");}catch(e){console.error(e);}
+    }
+    async function saveLead(e){
+        e.preventDefault();const id=document.getElementById("leadId").value;
+        const data={titulo:document.getElementById("leadTitulo").value,valor:parseFloat(document.getElementById("leadValor").value)||0,estagio:document.getElementById("leadEstagio").value,cliente_id:document.getElementById("leadCliente").value?parseInt(document.getElementById("leadCliente").value):null,responsavel_id:document.getElementById("leadResponsavel").value?parseInt(document.getElementById("leadResponsavel").value):null,origem:document.getElementById("leadOrigem").value,notas:document.getElementById("leadNotas").value,probabilidade:0};
+        try{const url=id?API_URL+"/pipeline/"+id:API_URL+"/pipeline";const method=id?"PUT":"POST";await fetch(url,{method,headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify(data)});closeLeadModal();loadPipeline();}catch(e){alert("Erro ao salvar.");}
+    }
+    async function deleteLead(id){if(!confirm("Excluir este lead?"))return;try{await fetch(API_URL+"/pipeline/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadPipeline();}catch(e){console.error(e);}}
+
+    // ═══════════════════════════════════════ AGENDA ═══════════════════════════════════════
+    async function loadCompromissos(){
+        const status=document.getElementById("filtroAgendaStatus").value;
+        let url=API_URL+"/compromissos";if(status)url+="?status="+encodeURIComponent(status);
+        try{const r=await fetch(url,{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const items=await r.json();
+            const ct=document.getElementById("agendaContent");
+            if(!items.length){ct.innerHTML='<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><h3>Nenhum compromisso</h3><p>Agende reuniões e follow-ups.</p></div>';return;}
+            ct.innerHTML=items.map(c=>{
+                const d=new Date(c.data_inicio);const dFim=c.data_fim?new Date(c.data_fim):null;
+                const dataStr=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"});
+                const horaStr=d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+                const horaFim=dFim?"-"+dFim.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"";
+                const statusCls={"Pendente":"badge-pendente","Concluído":"badge-atingida","Cancelado":"badge-cancelada"};
+                const tipoIcon={"Reunião":"📅","Ligação":"📞","Follow-up":"🔄","Visita":"🏠","Outro":"📌"};
+                return'<div class="agenda-card"><div class="agenda-card-left"><div class="agenda-date"><span class="agenda-day">'+d.getDate()+'</span><span class="agenda-month">'+d.toLocaleDateString("pt-BR",{month:"short"})+'</span></div></div><div class="agenda-card-body"><div class="agenda-card-top"><strong>'+(tipoIcon[c.tipo]||"📌")+" "+c.titulo+'</strong><span class="badge '+(statusCls[c.status]||"badge-pendente")+'">'+c.status+'</span></div><div class="agenda-card-meta">'+horaStr+" "+horaFim+(c.local?" • 📍 "+c.local:"")+(c.cliente_nome?" • 👤 "+c.cliente_nome:"")+(c.funcionario_nome?" • 🧑‍💼 "+c.funcionario_nome:"")+'</div>'+(c.descricao?'<div class="agenda-card-desc">'+c.descricao+'</div>':'')+'<div class="agenda-card-actions"><button class="btn btn-outline btn-sm" onclick="editCompromisso('+c.id+')">Editar</button><button class="btn btn-outline btn-sm" onclick="deleteCompromisso('+c.id+')">Excluir</button></div></div></div>';
+            }).join("");
+        }catch(e){console.error(e);}
+    }
+    async function loadAgendaSelects(){
+        await loadLeadSelects();
+        const cs=document.getElementById("compCliente");cs.innerHTML='<option value="">Nenhum</option>'+allClientes.map(c=>'<option value="'+c.id+'">'+c.nome+'</option>').join("");
+        const fs=document.getElementById("compFuncionario");fs.innerHTML='<option value="">Nenhum</option>'+allFuncionarios.map(f=>'<option value="'+f.id+'">'+f.nome+'</option>').join("");
+    }
+    function openCompromissoModal(){loadAgendaSelects();document.getElementById("compId").value="";document.getElementById("compTitulo").value="";document.getElementById("compDataInicio").value="";document.getElementById("compDataFim").value="";document.getElementById("compTipo").value="Reunião";document.getElementById("compStatus").value="Pendente";document.getElementById("compCliente").value="";document.getElementById("compFuncionario").value="";document.getElementById("compLocal").value="";document.getElementById("compDescricao").value="";document.getElementById("modalCompTitle").textContent="Novo Compromisso";document.getElementById("modalCompromissoOverlay").classList.add("active");}
+    function closeCompromissoModal(){document.getElementById("modalCompromissoOverlay").classList.remove("active");}
+    async function editCompromisso(id){
+        try{const r=await fetch(API_URL+"/compromissos",{headers:{"Authorization":"Bearer "+authToken}});const items=await r.json();const c=items.find(x=>x.id===id);if(!c)return;
+        await loadAgendaSelects();document.getElementById("compId").value=c.id;document.getElementById("compTitulo").value=c.titulo;document.getElementById("compDataInicio").value=c.data_inicio?c.data_inicio.slice(0,16):"";document.getElementById("compDataFim").value=c.data_fim?c.data_fim.slice(0,16):"";document.getElementById("compTipo").value=c.tipo;document.getElementById("compStatus").value=c.status;document.getElementById("compCliente").value=c.cliente_id||"";document.getElementById("compFuncionario").value=c.funcionario_id||"";document.getElementById("compLocal").value=c.local||"";document.getElementById("compDescricao").value=c.descricao||"";document.getElementById("modalCompTitle").textContent="Editar Compromisso";document.getElementById("modalCompromissoOverlay").classList.add("active");}catch(e){console.error(e);}
+    }
+    async function saveCompromisso(e){
+        e.preventDefault();const id=document.getElementById("compId").value;
+        const data={titulo:document.getElementById("compTitulo").value,data_inicio:document.getElementById("compDataInicio").value,data_fim:document.getElementById("compDataFim").value||null,tipo:document.getElementById("compTipo").value,status:document.getElementById("compStatus").value,cliente_id:document.getElementById("compCliente").value?parseInt(document.getElementById("compCliente").value):null,funcionario_id:document.getElementById("compFuncionario").value?parseInt(document.getElementById("compFuncionario").value):null,local:document.getElementById("compLocal").value,descricao:document.getElementById("compDescricao").value};
+        try{const url=id?API_URL+"/compromissos/"+id:API_URL+"/compromissos";const method=id?"PUT":"POST";await fetch(url,{method,headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify(data)});closeCompromissoModal();loadCompromissos();}catch(e){alert("Erro ao salvar.");}
+    }
+    async function deleteCompromisso(id){if(!confirm("Excluir este compromisso?"))return;try{await fetch(API_URL+"/compromissos/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadCompromissos();}catch(e){console.error(e);}}
+
+    // ═══════════════════════════════════════ CONTATOS ═══════════════════════════════════════
+    async function loadContatos(){
+        try{const r=await fetch(API_URL+"/contatos",{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const items=await r.json();
+            const tb=document.getElementById("contatosBody");
+            if(!items.length){tb.innerHTML='<tr><td colspan="8" class="no-results">Nenhum contato registrado.</td></tr>';return;}
+            tb.innerHTML=items.map(c=>{
+                const d=c.data_contato?new Date(c.data_contato).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"-";
+                const tipoIcon={"Ligação":"📞","Email":"✉️","WhatsApp":"💬","Reunião":"📅","Visita":"🏠","Outro":"📌"};
+                return'<tr><td>'+d+'</td><td>'+(c.cliente_nome||"-")+'</td><td><span class="badge badge-'+c.tipo.toLowerCase()+'">'+(tipoIcon[c.tipo]||"📌")+" "+c.tipo+'</span></td><td>'+c.assunto+'</td><td>'+c.resultado+'</td><td>'+c.proximo_passo+'</td><td>'+(c.funcionario_nome||"-")+'</td><td><button class="btn btn-outline btn-sm" onclick="deleteContato('+c.id+')">🗑️</button></td></tr>';
+            }).join("");
+        }catch(e){console.error(e);}
+    }
+    async function loadContatoClientes(){
+        await loadLeadSelects();
+        const cs=document.getElementById("contatoCliente");cs.innerHTML=allClientes.map(c=>'<option value="'+c.id+'">'+c.nome+'</option>').join("");
+    }
+    function openContatoModal(){loadContatoClientes();document.getElementById("contatoAssunto").value="";document.getElementById("contatoDescricao").value="";document.getElementById("contatoResultado").value="";document.getElementById("contatoProximoPasso").value="";document.getElementById("contatoDataProximo").value="";document.getElementById("modalContatoOverlay").classList.add("active");}
+    function closeContatoModal(){document.getElementById("modalContatoOverlay").classList.remove("active");}
+    async function saveContato(e){
+        e.preventDefault();
+        const data={cliente_id:parseInt(document.getElementById("contatoCliente").value),tipo:document.getElementById("contatoTipo").value,assunto:document.getElementById("contatoAssunto").value,descricao:document.getElementById("contatoDescricao").value,resultado:document.getElementById("contatoResultado").value,proximo_passo:document.getElementById("contatoProximoPasso").value,data_proximo_contato:document.getElementById("contatoDataProximo").value||null};
+        try{await fetch(API_URL+"/contatos",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify(data)});closeContatoModal();loadContatos();}catch(e){alert("Erro ao salvar.");}
+    }
+    async function deleteContato(id){if(!confirm("Excluir este contato?"))return;try{await fetch(API_URL+"/contatos/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadContatos();}catch(e){console.error(e);}}
+
+    // ═══════════════════════════════════════ TICKETS ═══════════════════════════════════════
+    async function loadTickets(){
+        const status=document.getElementById("filtroTicketStatus").value;
+        let url=API_URL+"/tickets";if(status)url+="?status="+encodeURIComponent(status);
+        try{const r=await fetch(url,{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const items=await r.json();
+            const tb=document.getElementById("ticketsBody");
+            if(!items.length){tb.innerHTML='<tr><td colspan="9" class="no-results">Nenhum ticket encontrado.</td></tr>';return;}
+            tb.innerHTML=items.map(t=>{
+                const d=t.data_criacao?new Date(t.data_criacao).toLocaleDateString("pt-BR"):"-" ;
+                const prioCls={"Baixa":"badge-pendente","Média":"badge-andamento","Alta":"badge-receita","Urgente":"badge-nao-atingida"};
+                const stCls={"Aberto":"badge-pendente","Em Andamento":"badge-andamento","Resolvido":"badge-atingida","Fechado":"badge-concluida"};
+                const sla=t.sla_horas||24;
+                const criado=t.data_criacao?new Date(t.data_criacao):null;
+                const horasPassadas=criado?Math.floor((Date.now()-criado)/(1000*60*60)):0;
+                const slaOk=horasPassadas<sla;
+                return'<tr><td>#'+t.id+'</td><td>'+t.titulo+'</td><td>'+(t.cliente_nome||"-")+'</td><td><span class="badge '+(prioCls[t.prioridade]||"badge-andamento")+'">'+t.prioridade+'</span></td><td><select class="ticket-status-select" onchange="changeTicketStatus('+t.id+',this.value)" style="background:transparent;border:1px solid var(--border);color:var(--text-primary);padding:4px 8px;border-radius:6px;font-size:11px;"><option value="Aberto"'+(t.status==="Aberto"?" selected":"")+'>Aberto</option><option value="Em Andamento"'+(t.status==="Em Andamento"?" selected":"")+'>Em Andamento</option><option value="Resolvido"'+(t.status==="Resolvido"?" selected":"")+'>Resolvido</option><option value="Fechado"'+(t.status==="Fechado"?" selected":"")+'>Fechado</option></select></td><td><span style="color:'+(slaOk?"var(--success)":"var(--danger)")+'">'+horasPassadas+'/'+sla+'h</span></td><td>'+(t.funcionario_nome||"-")+'</td><td>'+d+'</td><td><button class="btn btn-outline btn-sm" onclick="deleteTicket('+t.id+')">🗑️</button></td></tr>';
+            }).join("");
+        }catch(e){console.error(e);}
+    }
+    async function changeTicketStatus(id,status){
+        try{const r=await fetch(API_URL+"/tickets/"+id,{headers:{"Authorization":"Bearer "+authToken}});const t=await r.json();
+        await fetch(API_URL+"/tickets/"+id,{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({titulo:t.titulo,descricao:t.descricao||"",prioridade:t.prioridade,status,cliente_id:t.cliente_id,funcionario_id:t.funcionario_id,sla_horas:t.sla_horas||24})});loadTickets();}catch(e){console.error(e);}
+    }
+    async function loadTicketSelects(){
+        await loadLeadSelects();
+        const cs=document.getElementById("ticketCliente");cs.innerHTML='<option value="">Nenhum</option>'+allClientes.map(c=>'<option value="'+c.id+'">'+c.nome+'</option>').join("");
+        const fs=document.getElementById("ticketFuncionario");fs.innerHTML='<option value="">Nenhum</option>'+allFuncionarios.map(f=>'<option value="'+f.id+'">'+f.nome+'</option>').join("");
+    }
+    function openTicketModal(){loadTicketSelects();document.getElementById("ticketId").value="";document.getElementById("ticketTitulo").value="";document.getElementById("ticketDescricao").value="";document.getElementById("ticketPrioridade").value="Média";document.getElementById("ticketFuncionario").value="";document.getElementById("ticketSla").value=24;document.getElementById("modalTicketTitle").textContent="Novo Ticket";document.getElementById("modalTicketOverlay").classList.add("active");}
+    function closeTicketModal(){document.getElementById("modalTicketOverlay").classList.remove("active");}
+    async function saveTicket(e){
+        e.preventDefault();const id=document.getElementById("ticketId").value;
+        const data={titulo:document.getElementById("ticketTitulo").value,descricao:document.getElementById("ticketDescricao").value,prioridade:document.getElementById("ticketPrioridade").value,status:"Aberto",cliente_id:document.getElementById("ticketCliente").value?parseInt(document.getElementById("ticketCliente").value):null,funcionario_id:document.getElementById("ticketFuncionario").value?parseInt(document.getElementById("ticketFuncionario").value):null,sla_horas:parseInt(document.getElementById("ticketSla").value)||24};
+        try{const url=id?API_URL+"/tickets/"+id:API_URL+"/tickets";const method=id?"PUT":"POST";await fetch(url,{method,headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify(data)});closeTicketModal();loadTickets();}catch(e){alert("Erro ao salvar.");}
+    }
+    async function deleteTicket(id){if(!confirm("Excluir este ticket?"))return;try{await fetch(API_URL+"/tickets/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadTickets();}catch(e){console.error(e);}}
+
+    // ═══════════════════════════════════════ CAMPANHAS ═══════════════════════════════════════
+    async function loadCampanhas(){
+        try{const r=await fetch(API_URL+"/campanhas",{headers:{"Authorization":"Bearer "+authToken}});if(r.status===401){fazerLogout();return;}const items=await r.json();
+            const ct=document.getElementById("campanhasContent");
+            if(!items.length){ct.innerHTML='<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h3>Nenhuma campanha</h3><p>Crie campanhas para atrair leads.</p></div>';return;}
+            ct.innerHTML=items.map(c=>{
+                const statusCls={"Ativa":"badge-atingida","Pausada":"badge-andamento","Concluída":"badge-concluida","Cancelada":"badge-cancelada"};
+                const conv=c.leads_gerados>0?Math.round(c.conversoes/c.leads_gerados*100):0;
+                return'<div class="campanha-card"><div class="campanha-card-header"><h4>'+c.nome+'</h4><span class="badge '+(statusCls[c.status]||"badge-pendente")+'">'+c.status+'</span></div><div class="campanha-card-meta">'+(c.tipo?'<span class="campanha-tipo">'+c.tipo+'</span>':'')+(c.data_inicio?'<span>'+c.data_inicio+(c.data_fim?" → "+c.data_fim:"")+'</span>':'')+'</div>'+(c.descricao?'<p class="campanha-desc">'+c.descricao+'</p>':'')+'<div class="campanha-stats"><div class="campanha-stat"><span class="campanha-stat-val">'+fmt(c.orcamento)+'</span><span class="campanha-stat-lbl">Orçamento</span></div><div class="campanha-stat"><span class="campanha-stat-val">'+c.leads_gerados+'</span><span class="campanha-stat-lbl">Leads</span></div><div class="campanha-stat"><span class="campanha-stat-val">'+c.conversoes+'</span><span class="campanha-stat-lbl">Conversões</span></div><div class="campanha-stat"><span class="campanha-stat-val">'+conv+'%</span><span class="campanha-stat-lbl">Conversão</span></div></div><div class="campanha-card-actions"><button class="btn btn-outline btn-sm" onclick="editCampanha('+c.id+')">Editar</button><button class="btn btn-outline btn-sm" onclick="deleteCampanha('+c.id+')">Excluir</button></div></div>';
+            }).join("");
+        }catch(e){console.error(e);}
+    }
+    function openCampanhaModal(){document.getElementById("campId").value="";document.getElementById("campNome").value="";document.getElementById("campTipo").value="";document.getElementById("campOrcamento").value="";document.getElementById("campDataInicio").value="";document.getElementById("campDataFim").value="";document.getElementById("campDescricao").value="";document.getElementById("modalCampTitle").textContent="Nova Campanha";document.getElementById("modalCampanhaOverlay").classList.add("active");}
+    function closeCampanhaModal(){document.getElementById("modalCampanhaOverlay").classList.remove("active");}
+    async function editCampanha(id){
+        try{const r=await fetch(API_URL+"/campanhas",{headers:{"Authorization":"Bearer "+authToken}});const items=await r.json();const c=items.find(x=>x.id===id);if(!c)return;
+        document.getElementById("campId").value=c.id;document.getElementById("campNome").value=c.nome;document.getElementById("campTipo").value=c.tipo||"";document.getElementById("campOrcamento").value=c.orcamento||"";document.getElementById("campDataInicio").value=c.data_inicio||"";document.getElementById("campDataFim").value=c.data_fim||"";document.getElementById("campDescricao").value=c.descricao||"";document.getElementById("modalCampTitle").textContent="Editar Campanha";document.getElementById("modalCampanhaOverlay").classList.add("active");}catch(e){console.error(e);}
+    }
+    async function saveCampanha(e){
+        e.preventDefault();const id=document.getElementById("campId").value;
+        const data={nome:document.getElementById("campNome").value,tipo:document.getElementById("campTipo").value,orcamento:parseFloat(document.getElementById("campOrcamento").value)||0,data_inicio:document.getElementById("campDataInicio").value||null,data_fim:document.getElementById("campDataFim").value||null,descricao:document.getElementById("campDescricao").value};
+        try{const url=id?API_URL+"/campanhas/"+id:API_URL+"/campanhas";const method=id?"PUT":"POST";await fetch(url,{method,headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify(data)});closeCampanhaModal();loadCampanhas();}catch(e){alert("Erro ao salvar.");}
+    }
+    async function deleteCampanha(id){if(!confirm("Excluir esta campanha?"))return;try{await fetch(API_URL+"/campanhas/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadCampanhas();}catch(e){console.error(e);}}
     </script>
 </body>
 </html>
