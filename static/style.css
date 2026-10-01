@@ -634,6 +634,12 @@ body.light-theme .kanban-card-actions button { background: #ffffff; border-color
 .agenda-card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 .agenda-card-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; padding: 8px; background: rgba(6,6,14,0.2); border-radius: var(--radius-sm); }
 .agenda-card-actions { display: flex; gap: 6px; }
+body.light-theme .agenda-card { background: #ffffff; border-color: #e2e8f0; }
+body.light-theme .agenda-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
+body.light-theme .agenda-date { background: rgba(102,126,234,0.1); }
+body.light-theme .agenda-card-top strong { color: #334155; }
+body.light-theme .agenda-card-meta { color: #64748b; }
+body.light-theme .agenda-card-desc { color: #64748b; background: #f8fafc; }
 
 /* ===== CONTATOS TABLE ===== */
 .badge-ligação, .badge-ligacao { background: rgba(59,130,246,0.1); color: #3b82f6; }
@@ -661,6 +667,15 @@ body.light-theme .kanban-card-actions button { background: #ffffff; border-color
 .campanha-stat-val { display: block; font-size: 14px; font-weight: 700; color: #fff; }
 .campanha-stat-lbl { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 .campanha-card-actions { display: flex; gap: 8px; }
+body.light-theme .campanha-card { background: #ffffff; border-color: #e2e8f0; }
+body.light-theme .campanha-card:hover { border-color: var(--accent); box-shadow: 0 8px 24px rgba(15,23,42,0.12); }
+body.light-theme .campanha-card-header h4 { color: #334155; }
+body.light-theme .campanha-tipo { color: #4f46e5; background: rgba(102,126,234,0.1); }
+body.light-theme .campanha-card-meta span { color: #64748b; }
+body.light-theme .campanha-desc { color: #64748b; }
+body.light-theme .campanha-stat { background: #f8fafc; }
+body.light-theme .campanha-stat-val { color: #334155; }
+body.light-theme .campanha-stat-lbl { color: #94a3b8; }
 
 /* ===== FORM CONTROL SMALL ===== */
 .form-control-sm { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-primary); background: rgba(6,6,14,0.5); font-family: inherit; }
