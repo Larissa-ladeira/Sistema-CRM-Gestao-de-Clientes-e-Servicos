@@ -608,6 +608,17 @@ body.light-theme .income-item .income-info .income-value { color: #334155; }
 .kanban-card-actions button { background: rgba(6,6,14,0.6); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; }
 .kanban-drop { min-height: 40px; border: 2px dashed transparent; margin: 0 10px 10px; border-radius: var(--radius-sm); transition: var(--transition); }
 .kanban-drop:hover { border-color: var(--accent); background: rgba(102,126,234,0.05); }
+body.light-theme .kanban-column { background: #ffffff; border-color: #e2e8f0; }
+body.light-theme .kanban-header { border-bottom-color: #e2e8f0; }
+body.light-theme .kanban-col-title { color: #334155; }
+body.light-theme .kanban-col-count { color: #94a3b8; }
+body.light-theme .kanban-card { background: #f8fafc; border-color: #e2e8f0; }
+body.light-theme .kanban-card:hover { background: #ffffff; border-color: var(--accent); box-shadow: 0 8px 24px rgba(15,23,42,0.12); }
+body.light-theme .kanban-card-title { color: #334155; }
+body.light-theme .kanban-card-client { color: #64748b; }
+body.light-theme .kanban-card-value { color: #059669; }
+body.light-theme .kanban-card-origem { color: #64748b; background: rgba(102,126,234,0.1); }
+body.light-theme .kanban-card-actions button { background: #ffffff; border-color: #e2e8f0; }
 
 /* ===== AGENDA ===== */
 .agenda-list { display: flex; flex-direction: column; gap: 12px; }
