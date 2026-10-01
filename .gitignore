@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+secrets/*
+!secrets/.env.example
+client_secret_*.json
+
+# Backups de banco (contem dados de producao e credenciais embutidas na URL)
+backups/

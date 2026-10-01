@@ -1,0 +1,2793 @@
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Form
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from jose import JWTError, jwt
+import bcrypt as _bcrypt
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import json
+import os
+import sys
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "secrets", ".env"))
+
+app = FastAPI()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+@app.on_event("startup")
+def startup():
+    import random
+    from datetime import datetime, timedelta
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS clientes (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                documento VARCHAR(100),
+                whatsapp VARCHAR(50),
+                email VARCHAR(255)
+            );
+            CREATE TABLE IF NOT EXISTS servicos (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT,
+                valor_total NUMERIC(10,2) DEFAULT 0,
+                prazo_entrega DATE,
+                status VARCHAR(50) DEFAULT 'Pendente',
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS financeiro (
+                id SERIAL PRIMARY KEY,
+                servico_id INTEGER REFERENCES servicos(id),
+                valor_recebido NUMERIC(10,2) DEFAULT 0,
+                metodo_pagamento VARCHAR(100),
+                data_pagamento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+
+        cur.execute("""
+            ALTER TABLE servicos ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        """)
+        conn.commit()
+
+        cur.execute("""
+            ALTER TABLE clientes ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+        """)
+        conn.commit()
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                senha_hash VARCHAR(255) NOT NULL,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ativo BOOLEAN DEFAULT TRUE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'usuarios' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS departamentos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                descricao TEXT DEFAULT '',
+                ativo BOOLEAN DEFAULT TRUE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'departamentos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS funcionarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                cargo VARCHAR(255) DEFAULT '',
+                departamento_id INTEGER REFERENCES departamentos(id),
+                data_admissao DATE DEFAULT CURRENT_DATE,
+                salario NUMERIC(10,2) DEFAULT 0,
+                comissao_pct NUMERIC(5,2) DEFAULT 0,
+                telefone VARCHAR(50) DEFAULT '',
+                email VARCHAR(255) DEFAULT '',
+                foto_url VARCHAR(500) DEFAULT '',
+                ativo BOOLEAN DEFAULT TRUE,
+                usuario_id INTEGER REFERENCES usuarios(id)
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'funcionarios' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS produtos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                categoria VARCHAR(255) DEFAULT '',
+                preco NUMERIC(10,2) DEFAULT 0,
+                custo NUMERIC(10,2) DEFAULT 0,
+                estoque_atual INTEGER DEFAULT 0,
+                estoque_minimo INTEGER DEFAULT 5,
+                unidade VARCHAR(50) DEFAULT 'un',
+                codigo_barras VARCHAR(100) DEFAULT '',
+                ativo BOOLEAN DEFAULT TRUE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'produtos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS vendas (
+                id SERIAL PRIMARY KEY,
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                cliente_id INTEGER REFERENCES clientes(id),
+                data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                valor_total NUMERIC(10,2) DEFAULT 0,
+                desconto NUMERIC(10,2) DEFAULT 0,
+                metodo_pagamento VARCHAR(100) DEFAULT '',
+                status VARCHAR(50) DEFAULT 'Concluída',
+                observacoes TEXT DEFAULT ''
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'vendas' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS itens_venda (
+                id SERIAL PRIMARY KEY,
+                venda_id INTEGER REFERENCES vendas(id) ON DELETE CASCADE,
+                produto_id INTEGER REFERENCES produtos(id),
+                quantidade INTEGER DEFAULT 1,
+                preco_unitario NUMERIC(10,2) DEFAULT 0,
+                subtotal NUMERIC(10,2) DEFAULT 0
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'itens_venda' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS metas (
+                id SERIAL PRIMARY KEY,
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                tipo VARCHAR(100) NOT NULL,
+                valor_meta NUMERIC(10,2) DEFAULT 0,
+                valor_alcancado NUMERIC(10,2) DEFAULT 0,
+                periodo VARCHAR(50) DEFAULT 'Mensal',
+                data_inicio DATE DEFAULT CURRENT_DATE,
+                data_fim DATE DEFAULT CURRENT_DATE,
+                status VARCHAR(50) DEFAULT 'Ativa'
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'metas' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_leads (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL,
+                valor NUMERIC(10,2) DEFAULT 0,
+                estagio VARCHAR(50) DEFAULT 'Prospecção',
+                responsavel_id INTEGER REFERENCES funcionarios(id),
+                probabilidade INTEGER DEFAULT 20,
+                notas TEXT DEFAULT '',
+                origem VARCHAR(100) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'pipeline_leads' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contatos (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                tipo VARCHAR(50) NOT NULL,
+                assunto VARCHAR(255) DEFAULT '',
+                descricao TEXT DEFAULT '',
+                data_contato TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                resultado VARCHAR(255) DEFAULT '',
+                proximo_passo VARCHAR(255) DEFAULT '',
+                data_proximo_contato DATE
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'contatos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS compromissos (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT DEFAULT '',
+                data_inicio TIMESTAMP NOT NULL,
+                data_fim TIMESTAMP,
+                tipo VARCHAR(50) DEFAULT 'Reunião',
+                status VARCHAR(50) DEFAULT 'Pendente',
+                cliente_id INTEGER REFERENCES clientes(id),
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                local VARCHAR(255) DEFAULT '',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'compromissos' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tickets (
+                id SERIAL PRIMARY KEY,
+                cliente_id INTEGER REFERENCES clientes(id),
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT DEFAULT '',
+                prioridade VARCHAR(50) DEFAULT 'Média',
+                status VARCHAR(50) DEFAULT 'Aberto',
+                funcionario_id INTEGER REFERENCES funcionarios(id),
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_resolucao TIMESTAMP,
+                sla_horas INTEGER DEFAULT 24
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'tickets' criada/verificada.")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS campanhas (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                tipo VARCHAR(100) DEFAULT '',
+                data_inicio DATE,
+                data_fim DATE,
+                status VARCHAR(50) DEFAULT 'Ativa',
+                orcamento NUMERIC(10,2) DEFAULT 0,
+                descricao TEXT DEFAULT '',
+                leads_gerados INTEGER DEFAULT 0,
+                conversoes INTEGER DEFAULT 0
+            );
+        """)
+        conn.commit()
+        print("✓ Tabela 'campanhas' criada/verificada.")
+
+        cur.execute("SELECT COUNT(*) FROM servicos WHERE criado_em IS NULL OR criado_em < '2020-01-01'")
+        count = cur.fetchone()[0]
+        if count > 0:
+            cur.execute("SELECT id FROM servicos WHERE criado_em IS NULL OR criado_em < '2020-01-01'")
+            servico_ids = [row[0] for row in cur.fetchall()]
+            start_date = datetime(2020, 1, 1)
+            end_date = datetime(2026, 12, 31)
+            total_days = (end_date - start_date).days
+            for sid in servico_ids:
+                random_days = random.randint(0, total_days)
+                random_date = start_date + timedelta(days=random_days)
+                cur.execute("UPDATE servicos SET criado_em = %s WHERE id = %s", (random_date, sid))
+            conn.commit()
+            print(f"📅 {len(servico_ids)} serviços atualizados com datas entre 2020 e 2026.")
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro na migração: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+SEGREDOS_INSEGUROS = {
+    "SECRET_KEY": {"fallback-key-change-me"},
+    "ADMIN_PASSWORD": {"admin123"},
+    "CLIENTE_VIEW_PIN": {"1234"},
+}
+
+def _falhar_se_segredo_inseguro():
+    problemas = []
+    for nome, valores_proibidos in SEGREDOS_INSEGUROS.items():
+        valor_atual = os.getenv(nome, "")
+        if valor_atual in valores_proibidos or not valor_atual.strip():
+            problemas.append(nome)
+    if problemas:
+        raise RuntimeError(
+            "CONFIGURACAO DE SEGURANCA INVALIDA: "
+            + ", ".join(problemas)
+            + " ausente(s) ou com valor padrao fraco. "
+            "Defina valores fortes e unicos em secrets/.env antes de iniciar. "
+            "O servidor nao sera iniciado para evitar expor dados do CRM."
+        )
+
+_falhar_se_segredo_inseguro()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
+
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+CLIENTE_VIEW_PIN = os.getenv("CLIENTE_VIEW_PIN")
+
+def hash_password(password: str) -> str:
+    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+
+def verify_password(password: str, hashed: str) -> bool:
+    return _bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+
+ORIGENS_PERMITIDAS = [
+    origem.strip()
+    for origem in os.getenv("CORS_ORIGENS", "http://localhost:8000,http://127.0.0.1:8000").split(",")
+    if origem.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ORIGENS_PERMITIDAS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+def get_db_connection():
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url)
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        database=os.getenv("DB_NAME", "db_crm_freelancer"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "")
+    )
+
+def authenticate_user(username: str, password: str):
+    if username == ADMIN_USER and password == ADMIN_PASSWORD:
+        return {"sub": username, "role": "admin"}
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM usuarios WHERE email = %s AND ativo = TRUE", (username,))
+        user = cur.fetchone()
+        if user and verify_password(password, user["senha_hash"]):
+            return {"sub": user["email"], "role": "user", "user_id": user["id"], "nome": user["nome"]}
+        return None
+    except Exception:
+        return None
+    finally:
+        cur.close()
+        conn.close()
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def verify_token(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    token = auth_header.split("Bearer ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+async def exigir_admin(token_data: dict = Depends(verify_token)):
+    if token_data.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso restrito a administradores. Sua conta não tem permissão para esta operação."
+        )
+    return token_data
+
+MAX_TENTATIVAS_LOGIN = int(os.getenv("MAX_TENTATIVAS_LOGIN", 5))
+JANELA_BLOQUEIO_MINUTOS = int(os.getenv("JANELA_BLOQUEIO_MINUTOS", 15))
+_tentativas_login: dict[str, list[datetime]] = {}
+
+def _chave_login(request: Request, username: str) -> str:
+    ip = request.client.host if request.client else "desconhecido"
+    return f"{ip}|{username.lower()}"
+
+def _registrar_tentativa(chave: str) -> None:
+    agora = datetime.utcnow()
+    _tentativas_login[chave] = [t for t in _tentativas_login.get(chave, []) if agora - t < timedelta(minutes=JANELA_BLOQUEIO_MINUTOS)]
+    _tentativas_login[chave].append(agora)
+
+def _limpar_tentativas(chave: str) -> None:
+    _tentativas_login.pop(chave, None)
+
+def _bloqueio_restante(chave: str) -> int:
+    agora = datetime.utcnow()
+    tentativas = [t for t in _tentativas_login.get(chave, []) if agora - t < timedelta(minutes=JANELA_BLOQUEIO_MINUTOS)]
+    _tentativas_login[chave] = tentativas
+    if len(tentativas) < MAX_TENTATIVAS_LOGIN:
+        return 0
+    expiracao = tentativas[0] + timedelta(minutes=JANELA_BLOQUEIO_MINUTOS)
+    return max(0, int((expiracao - agora).total_seconds()) + 1)
+
+# ──────────────────────────── UI ────────────────────────────
+
+@app.get("/")
+async def serve_ui():
+    return FileResponse(os.path.join(BASE_DIR, "static", "crm-trackt.html"))
+
+# ──────────────────────────── AUTH ────────────────────────────
+
+@app.post("/login")
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), remember_me: bool = Form(False)):
+    chave = _chave_login(request, form_data.username)
+
+    espera = _bloqueio_restante(chave)
+    if espera:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas tentativas de login. Tente novamente em {espera}s."
+        )
+
+    user_data = authenticate_user(form_data.username, form_data.password)
+    if not user_data:
+        _registrar_tentativa(chave)
+        excedeu = len(_tentativas_login.get(chave, [])) > MAX_TENTATIVAS_LOGIN
+        if not excedeu:
+            restam = MAX_TENTATIVAS_LOGIN - len(_tentativas_login.get(chave, []))
+            raise HTTPException(
+                status_code=401,
+                detail=f"Usuário ou senha inválidos. {restam} tentativa(s) restante(s)."
+            )
+        raise HTTPException(
+            status_code=429,
+            detail=f"Conta temporariamente bloqueada por {JANELA_BLOQUEIO_MINUTOS} minutos após tentativas incorretas."
+        )
+
+    _limpar_tentativas(chave)
+    expire_days = 30 if remember_me else 1
+    access_token = create_access_token(data=user_data, expires_delta=timedelta(days=expire_days))
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": expire_days * 86400,
+        "user": {
+            "sub": user_data["sub"],
+            "role": user_data["role"],
+            "nome": user_data.get("nome", "Admin"),
+            "user_id": user_data.get("user_id")
+        }
+    }
+
+class RegisterSchema(BaseModel):
+    nome: str
+    email: str
+    password: str
+
+class CheckEmailSchema(BaseModel):
+    email: str
+
+SENHAS_COMUNS = {
+    "123456", "12345678", "123456789", "password", "senha", "admin123",
+    "qwerty", "123123", "abc123", "111111", "000000", "admin", "password1",
+}
+
+def validar_forca_senha(senha: str) -> None:
+    if len(senha) < 8:
+        raise HTTPException(status_code=400, detail="A senha deve ter no mínimo 8 caracteres")
+    if len(senha) > 128:
+        raise HTTPException(status_code=400, detail="A senha é longa demais (máximo 128 caracteres)")
+    if senha.lower() in SENHAS_COMUNS:
+        raise HTTPException(status_code=400, detail="Esta senha é muito comum. Escolha outra.")
+    tem_letra = any(c.isalpha() for c in senha)
+    tem_numero = any(c.isdigit() for c in senha)
+    if not (tem_letra and tem_numero):
+        raise HTTPException(status_code=400, detail="A senha deve combinar letras e números")
+
+@app.post("/auth/register")
+def register(data: RegisterSchema):
+    if not data.nome or not data.email or not data.password:
+        raise HTTPException(status_code=400, detail="Todos os campos são obrigatórios")
+    validar_forca_senha(data.password)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM usuarios WHERE email = %s", (data.email,))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Este email já está cadastrado")
+        senha_hash = hash_password(data.password)
+        cur.execute(
+            "INSERT INTO usuarios (nome, email, senha_hash) VALUES (%s, %s, %s) RETURNING id, data_criacao;",
+            (data.nome.strip(), data.email.strip().lower(), senha_hash)
+        )
+        user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {
+            "mensagem": "Cadastro realizado com sucesso!",
+            "user": {
+                "id": user[0],
+                "nome": data.nome.strip(),
+                "email": data.email.strip().lower(),
+                "data_criacao": user[1].isoformat() if user[1] else None
+            }
+        }
+    except HTTPException:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Erro ao cadastrar: {str(e)}")
+
+@app.post("/auth/check-email")
+def check_email(data: CheckEmailSchema):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM usuarios WHERE email = %s", (data.email.strip().lower(),))
+        exists = cur.fetchone() is not None
+        return {"disponivel": not exists}
+    finally:
+        cur.close()
+        conn.close()
+
+class GoogleAuthSchema(BaseModel):
+    credential: str
+    remember_me: bool = False
+
+@app.post("/auth/google")
+def google_login(data: GoogleAuthSchema):
+    try:
+        import google.oauth2.id_token
+        import google.auth.transport.requests
+        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(status_code=500, detail="Google Login não configurado. Configure GOOGLE_CLIENT_ID no .env")
+        request = google.auth.transport.requests.Request()
+        id_info = google.oauth2.id_token.verify_oauth2_token(data.credential, request, GOOGLE_CLIENT_ID)
+        email = id_info.get("email")
+        name = id_info.get("name", email.split("@")[0])
+        if not email:
+            raise HTTPException(status_code=400, detail="Email não fornecido pelo Google")
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("SELECT * FROM usuarios WHERE email = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                cur.execute(
+                    "INSERT INTO usuarios (nome, email, senha_hash) VALUES (%s, %s, %s) RETURNING id, nome, data_criacao;",
+                    (name, email, hash_password(os.urandom(24).hex()))
+                )
+                new_user = cur.fetchone()
+                conn.commit()
+                user_id = new_user["id"]
+                nome = new_user["nome"]
+            else:
+                user_id = user["id"]
+                nome = user["nome"]
+            expire_days = 30 if data.remember_me else 1
+            user_data = {"sub": email, "role": "user", "user_id": user_id, "nome": nome}
+            access_token = create_access_token(data=user_data, expires_delta=timedelta(days=expire_days))
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "expires_in": expire_days * 86400,
+                "user": {
+                    "sub": email,
+                    "role": "user",
+                    "nome": nome,
+                    "user_id": user_id
+                }
+            }
+        finally:
+            cur.close()
+            conn.close()
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Token Google inválido: {str(e)}")
+
+@app.get("/auth/google-client-id")
+def get_google_client_id():
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    return {"client_id": client_id}
+
+@app.get("/usuarios/me")
+def usuario_atual(token_data: dict = Depends(verify_token)):
+    return {
+        "sub": token_data.get("sub"),
+        "role": token_data.get("role", "user"),
+        "nome": token_data.get("nome", "Usuário"),
+        "user_id": token_data.get("user_id")
+    }
+
+class PapelUsuarioSchema(BaseModel):
+    role: str
+    ativo: bool | None = None
+
+@app.get("/usuarios")
+def listar_usuarios(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.id, u.nome, u.email, u.ativo, u.data_criacao,
+                   (u.email = %s) as eh_admin_padrao
+            FROM usuarios u
+            ORDER BY u.data_criacao DESC
+        """, (ADMIN_USER,))
+        return [dict(u) for u in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/usuarios/{usuario_id}/permissao")
+def alterar_permissao_usuario(usuario_id: int, dados: PapelUsuarioSchema, token_data: dict = Depends(exigir_admin)):
+    novo_role = dados.role.strip().lower()
+    if novo_role not in ("admin", "user"):
+        raise HTTPException(status_code=400, detail="Role deve ser 'admin' ou 'user'")
+
+    if usuario_id == token_data.get("user_id") and (novo_role != "admin" or dados.ativo is False):
+        raise HTTPException(
+            status_code=400,
+            detail="Você não pode remover o próprio acesso de administrador. Peça a outro admin."
+        )
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, nome, email, ativo FROM usuarios WHERE id = %s;", (usuario_id,))
+        alvo = cur.fetchone()
+        if not alvo:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        if alvo["email"] == ADMIN_USER:
+            raise HTTPException(status_code=400, detail="O administrador principal não pode ser alterado")
+
+        ativo = alvo["ativo"] if dados.ativo is None else dados.ativo
+        cur.execute(
+            "UPDATE usuarios SET ativo = %s WHERE id = %s RETURNING id, nome, email, ativo;",
+            (ativo, usuario_id)
+        )
+        atualizado = cur.fetchone()
+
+        if novo_role == "admin" and not ativo:
+            raise HTTPException(status_code=400, detail="Não é possível conceder admin a um usuário inativo")
+
+        conn.commit()
+        return {
+            "mensagem": f"Permissões de '{atualizado['nome']}' atualizadas.",
+            "usuario": dict(atualizado),
+            "acesso": "admin" if novo_role == "admin" and ativo else "somente o próprio perfil"
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao alterar permissão: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── CLIENTES ────────────────────────────
+
+class PinSchema(BaseModel):
+    pin: str
+
+@app.post("/clientes/verificar-pin")
+def verificar_pin_cliente(pin_data: PinSchema, token_data: dict = Depends(exigir_admin)):
+    if pin_data.pin != CLIENTE_VIEW_PIN:
+        raise HTTPException(status_code=403, detail="PIN inválido")
+    return {"valido": True}
+
+CAMPOS_ORDENACAO_CLIENTES = {"nome", "documento", "whatsapp", "email", "id"}
+
+@app.get("/clientes")
+def listar_clientes(
+    limite: int | None = None,
+    offset: int = 0,
+    ordenar_por: str = "nome",
+    ordem: str = "ASC",
+    token_data: dict = Depends(exigir_admin)
+):
+    if ordenar_por not in CAMPOS_ORDENACAO_CLIENTES:
+        raise HTTPException(status_code=400, detail=f"Campo de ordenação inválido. Use um de: {', '.join(sorted(CAMPOS_ORDENACAO_CLIENTES))}")
+    direcao = "DESC" if ordem.upper() == "DESC" else "ASC"
+    if limite is not None and limite < 1:
+        raise HTTPException(status_code=400, detail="Limite deve ser maior que zero")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="Offset não pode ser negativo")
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        sql = f"SELECT * FROM clientes ORDER BY {ordenar_por} {direcao}"
+        params: tuple = ()
+        if limite is not None:
+            sql += " LIMIT %s OFFSET %s"
+            params = (limite, offset)
+        elif offset:
+            sql += " LIMIT ALL OFFSET %s"
+            params = (offset,)
+        cur.execute(sql, params)
+        return [dict(c) for c in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/clientes/buscar")
+def buscar_clientes(q: str, limite: int | None = None, token_data: dict = Depends(exigir_admin)):
+    termo = f"%{q.strip()}%"
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        sql = """
+            SELECT * FROM clientes
+            WHERE nome ILIKE %s OR documento ILIKE %s
+               OR email ILIKE %s OR whatsapp ILIKE %s
+            ORDER BY nome ASC
+        """
+        params: list = [termo, termo, termo, termo]
+        if limite is not None:
+            if limite < 1:
+                raise HTTPException(status_code=400, detail="Limite deve ser maior que zero")
+            sql += " LIMIT %s"
+            params.append(limite)
+        cur.execute(sql, tuple(params))
+        return [dict(c) for c in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/clientes/{cliente_id}")
+def detalhes_cliente(cliente_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute("SELECT * FROM clientes WHERE id = %s;", (cliente_id,))
+    cliente = cur.fetchone()
+    if not cliente:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    cur.execute("SELECT * FROM servicos WHERE cliente_id = %s ORDER BY prazo_entrega DESC;", (cliente_id,))
+    servicos = cur.fetchall()
+
+    servico_ids = [s["id"] for s in servicos]
+    pagamentos = []
+    if servico_ids:
+        cur.execute("SELECT * FROM financeiro WHERE servico_id = ANY(%s) ORDER BY data_pagamento DESC;", (servico_ids,))
+        pagamentos = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return {
+        "cliente": dict(cliente),
+        "servicos": [dict(s) for s in servicos],
+        "pagamentos": [dict(p) for p in pagamentos]
+    }
+
+class ClienteSchema(BaseModel):
+    nome: str
+    documento: str
+    whatsapp: str
+    email: str
+
+class ServicoInputSchema(BaseModel):
+    titulo: str
+    descricao: str = ""
+    valor_total: float = 0
+    prazo_entrega: str | None = None
+    status: str = "Pendente"
+
+class FinanceiroInputSchema(BaseModel):
+    valor_recebido: float = 0
+    metodo_pagamento: str = ""
+
+class ClienteCompletoSchema(BaseModel):
+    cliente: ClienteSchema
+    servico: ServicoInputSchema
+    financeiro: FinanceiroInputSchema | None = None
+
+@app.post("/clientes/completo")
+def cadastrar_cliente_completo(data: ClienteCompletoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO clientes (nome, documento, whatsapp, email) VALUES (%s, %s, %s, %s) RETURNING id;",
+            (data.cliente.nome, data.cliente.documento, data.cliente.whatsapp, data.cliente.email)
+        )
+        cliente_id = cur.fetchone()[0]
+
+        cur.execute(
+            "INSERT INTO servicos (cliente_id, titulo, descricao, valor_total, prazo_entrega, status, criado_em) VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) RETURNING id;",
+            (cliente_id, data.servico.titulo, data.servico.descricao, data.servico.valor_total, data.servico.prazo_entrega, data.servico.status)
+        )
+        servico_id = cur.fetchone()[0]
+
+        if data.financeiro and data.financeiro.metodo_pagamento and data.financeiro.valor_recebido > 0:
+            cur.execute(
+                "INSERT INTO financeiro (servico_id, valor_recebido, metodo_pagamento) VALUES (%s, %s, %s) RETURNING id;",
+                (servico_id, data.financeiro.valor_recebido, data.financeiro.metodo_pagamento)
+            )
+            cur.fetchone()
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"mensagem": "Cliente, serviço e pagamento registrados!", "cliente_id": cliente_id, "servico_id": servico_id}
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Erro ao cadastrar: {str(e)}")
+
+@app.post("/clientes")
+def cadastrar_cliente(cliente: ClienteSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO clientes (nome, documento, whatsapp, email) VALUES (%s, %s, %s, %s) RETURNING id;",
+            (cliente.nome, cliente.documento, cliente.whatsapp, cliente.email)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"mensagem": "Cliente cadastrado com sucesso!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Erro ao cadastrar: {str(e)}")
+
+class ClienteUpdateSchema(BaseModel):
+    nome: str | None = None
+    documento: str | None = None
+    whatsapp: str | None = None
+    email: str | None = None
+
+@app.put("/clientes/{cliente_id}")
+def atualizar_cliente(cliente_id: int, dados: ClienteUpdateSchema, token_data: dict = Depends(exigir_admin)):
+    campos = dados.model_dump(exclude_unset=True)
+    if not campos:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+    if "nome" in campos and not campos["nome"].strip():
+        raise HTTPException(status_code=400, detail="Nome não pode ficar vazio")
+    for campo in ("nome", "documento", "whatsapp", "email"):
+        if campo in campos and campos[campo] is not None:
+            campos[campo] = campos[campo].strip()
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM clientes WHERE id = %s;", (cliente_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+        atribuicoes = ", ".join(f"{campo} = %s" for campo in campos)
+        cur.execute(
+            f"UPDATE clientes SET {atribuicoes} WHERE id = %s RETURNING *;",
+            (*campos.values(), cliente_id)
+        )
+        atualizado = cur.fetchone()
+        conn.commit()
+        return {"mensagem": "Cliente atualizado com sucesso!", "cliente": dict(atualizado)}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/clientes/{cliente_id}")
+def excluir_cliente(cliente_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, nome FROM clientes WHERE id = %s;", (cliente_id,))
+        cliente = cur.fetchone()
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+        removidos = {}
+        cur.execute(
+            "DELETE FROM financeiro WHERE servico_id IN (SELECT id FROM servicos WHERE cliente_id = %s);",
+            (cliente_id,)
+        )
+        removidos["financeiro"] = cur.rowcount
+        cur.execute(
+            "DELETE FROM itens_venda WHERE venda_id IN (SELECT id FROM vendas WHERE cliente_id = %s);",
+            (cliente_id,)
+        )
+        removidos["itens_venda"] = cur.rowcount
+
+        for tabela in ("servicos", "vendas", "pipeline_leads", "contatos", "compromissos", "tickets"):
+            cur.execute(f"DELETE FROM {tabela} WHERE cliente_id = %s;", (cliente_id,))
+            removidos[tabela] = cur.rowcount
+
+        cur.execute("DELETE FROM clientes WHERE id = %s;", (cliente_id,))
+        conn.commit()
+        total = sum(removidos.values())
+        return {
+            "mensagem": f"Cliente '{cliente['nome']}' excluído com sucesso!",
+            "registros_removidos": {k: v for k, v in removidos.items() if v > 0},
+            "total_removidos": total
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao excluir: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/clientes/{cliente_id}/servicos")
+def listar_servicos_por_cliente(cliente_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT s.*, c.nome as nome_cliente
+            FROM servicos s
+            JOIN clientes c ON s.cliente_id = c.id
+            WHERE s.cliente_id = %s
+            ORDER BY s.prazo_entrega ASC;
+        """, (cliente_id,))
+        servicos = cur.fetchall()
+        return [dict(s) for s in servicos]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no banco: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── SERVIÇOS ────────────────────────────
+
+class ServicoSchema(BaseModel):
+    cliente_id: int
+    titulo: str
+    descricao: str
+    valor_total: float
+    prazo_entrega: str
+    status: str
+
+@app.post("/servicos")
+def cadastrar_servico(servico: ServicoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO servicos (cliente_id, titulo, descricao, valor_total, prazo_entrega, status, criado_em) VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) RETURNING id;",
+            (servico.cliente_id, servico.titulo, servico.descricao, servico.valor_total, servico.prazo_entrega, servico.status)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"mensagem": "Serviço registrado!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        return {"erro": str(e)}
+
+# ──────────────────────────── FINANCEIRO ────────────────────────────
+
+class FinanceiroSchema(BaseModel):
+    servico_id: int
+    valor_recebido: float
+    metodo_pagamento: str
+
+@app.post("/financeiro")
+def registrar_pagamento(pagamento: FinanceiroSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO financeiro (servico_id, valor_recebido, metodo_pagamento) VALUES (%s, %s, %s) RETURNING id;",
+            (pagamento.servico_id, pagamento.valor_recebido, pagamento.metodo_pagamento)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"mensagem": "Pagamento registrado!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        return {"erro": str(e)}
+
+# ──────────────────────────── DASHBOARD EXISTENTE ────────────────────────────
+
+@app.get("/dashboard/resumo")
+def dashboard_resumo(
+    data_inicio: str = "",
+    data_fim: str = "",
+    status: str = "",
+    cliente_busca: str = "",
+    token_data: dict = Depends(exigir_admin)
+):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    where_clause = "WHERE 1=1"
+    params = []
+
+    if data_inicio and len(data_inicio) == 4 and data_inicio.isdigit() and not data_fim:
+        data_fim = data_inicio
+    if data_fim and len(data_fim) == 4 and data_fim.isdigit() and not data_inicio:
+        data_inicio = data_fim
+
+    if data_inicio:
+        where_clause += " AND s.criado_em >= %s"
+        params.append(f"{data_inicio}-01-01" if len(data_inicio) == 4 and data_inicio.isdigit() else data_inicio)
+    if data_fim:
+        where_clause += " AND s.criado_em <= %s"
+        params.append(f"{data_fim}-12-31 23:59:59" if len(data_fim) == 4 and data_fim.isdigit() else data_fim + " 23:59:59")
+    if status:
+        where_clause += " AND s.status = %s"
+        params.append(status)
+    if cliente_busca:
+        where_clause += " AND (c.nome ILIKE %s OR c.documento ILIKE %s)"
+        params.append(f"%{cliente_busca}%")
+        params.append(f"%{cliente_busca}%")
+
+    cur.execute(f"SELECT COUNT(*) as total, COALESCE(SUM(s.valor_total), 0) as valor_total FROM servicos s JOIN clientes c ON s.cliente_id = c.id {where_clause}", list(params))
+    servicos = cur.fetchone()
+
+    cur.execute(f"SELECT COUNT(*) as pagos FROM servicos s JOIN clientes c ON s.cliente_id = c.id {where_clause} AND s.status = 'Finalizado'", list(params))
+    pagos = cur.fetchone()
+
+    cur.execute(f"SELECT COUNT(*) as pendentes FROM servicos s JOIN clientes c ON s.cliente_id = c.id {where_clause} AND s.status = 'Pendente'", list(params))
+    pendentes = cur.fetchone()
+
+    cur.execute(f"SELECT COALESCE(SUM(f.valor_recebido), 0) as total_recebido FROM financeiro f JOIN servicos s ON f.servico_id = s.id JOIN clientes c ON s.cliente_id = c.id {where_clause}", list(params))
+    financeiro = cur.fetchone()
+
+    cur.execute(f"SELECT s.status, COUNT(*) as quantidade, COALESCE(SUM(s.valor_total), 0) as valor FROM servicos s JOIN clientes c ON s.cliente_id = c.id {where_clause} GROUP BY s.status", list(params))
+    por_status = cur.fetchall()
+
+    cur.execute(f"""
+        SELECT c.nome, COUNT(s.id) as total_servicos, COALESCE(SUM(s.valor_total), 0) as valor_total
+        FROM clientes c
+        LEFT JOIN servicos s ON c.id = s.cliente_id {where_clause}
+        GROUP BY c.nome
+        ORDER BY valor_total DESC
+        LIMIT 10
+    """, list(params))
+    top_clientes = cur.fetchall()
+
+    cur.execute(f"""
+        SELECT f.metodo_pagamento, COUNT(*) as quantidade, COALESCE(SUM(f.valor_recebido), 0) as total
+        FROM financeiro f
+        JOIN servicos s ON f.servico_id = s.id
+        JOIN clientes c ON s.cliente_id = c.id {where_clause}
+        GROUP BY f.metodo_pagamento
+    """, list(params))
+    por_metodo = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return {
+        "total_servicos": servicos["total"],
+        "valor_total_contratos": float(servicos["valor_total"]),
+        "servicos_pagos": pagos["pagos"],
+        "servicos_pendentes": pendentes["pendentes"],
+        "total_recebido": float(financeiro["total_recebido"]),
+        "total_pendente": float(servicos["valor_total"]) - float(financeiro["total_recebido"]),
+        "por_status": [dict(r) for r in por_status],
+        "top_clientes": [dict(r) for r in top_clientes],
+        "por_metodo": [dict(r) for r in por_metodo]
+    }
+
+@app.get("/dashboard/servicos")
+def dashboard_servicos(
+    status: str = "",
+    cliente_busca: str = "",
+    data_inicio: str = "",
+    data_fim: str = "",
+    token_data: dict = Depends(exigir_admin)
+):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    query = """
+        SELECT s.*, c.nome as cliente_nome, c.id as cliente_id
+        FROM servicos s
+        JOIN clientes c ON s.cliente_id = c.id
+        WHERE 1=1
+    """
+    params = []
+
+    if data_inicio and len(data_inicio) == 4 and data_inicio.isdigit() and not data_fim:
+        data_fim = data_inicio
+    if data_fim and len(data_fim) == 4 and data_fim.isdigit() and not data_inicio:
+        data_inicio = data_fim
+
+    if data_inicio:
+        query += " AND s.criado_em >= %s"
+        params.append(f"{data_inicio}-01-01" if len(data_inicio) == 4 and data_inicio.isdigit() else data_inicio)
+    if data_fim:
+        query += " AND s.criado_em <= %s"
+        params.append(f"{data_fim}-12-31 23:59:59" if len(data_fim) == 4 and data_fim.isdigit() else data_fim + " 23:59:59")
+    if status:
+        query += " AND s.status = %s"
+        params.append(status)
+    if cliente_busca:
+        query += " AND (c.nome ILIKE %s OR c.documento ILIKE %s)"
+        params.append(f"%{cliente_busca}%")
+        params.append(f"%{cliente_busca}%")
+
+    query += " ORDER BY c.nome ASC"
+
+    cur.execute(query, params)
+    servicos = cur.fetchall()
+    total_count = len(servicos)
+    total_valor = float(sum(s["valor_total"] for s in servicos)) if servicos else 0
+
+    cur.close()
+    conn.close()
+
+    return {"servicos": [dict(s) for s in servicos], "total": total_count, "total_valor": total_valor}
+
+@app.get("/dashboard/financeiro")
+def dashboard_financeiro(
+    data_inicio: str = "",
+    data_fim: str = "",
+    status: str = "",
+    cliente_busca: str = "",
+    metodo: str = "",
+    token_data: dict = Depends(exigir_admin)
+):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    query = """
+        SELECT f.*, s.titulo as servico_titulo, s.status as servico_status, s.descricao, c.nome as cliente_nome, c.id as cliente_id
+        FROM financeiro f
+        JOIN servicos s ON f.servico_id = s.id
+        JOIN clientes c ON s.cliente_id = c.id
+        WHERE 1=1
+    """
+    params = []
+
+    if data_inicio and len(data_inicio) == 4 and data_inicio.isdigit() and not data_fim:
+        data_fim = data_inicio
+    if data_fim and len(data_fim) == 4 and data_fim.isdigit() and not data_inicio:
+        data_inicio = data_fim
+
+    if data_inicio:
+        query += " AND f.data_pagamento >= %s"
+        params.append(f"{data_inicio}-01-01" if len(data_inicio) == 4 and data_inicio.isdigit() else data_inicio)
+    if data_fim:
+        query += " AND f.data_pagamento <= %s"
+        params.append(f"{data_fim}-12-31 23:59:59" if len(data_fim) == 4 and data_fim.isdigit() else data_fim + " 23:59:59")
+    if status:
+        query += " AND s.status = %s"
+        params.append(status)
+    if cliente_busca:
+        query += " AND (c.nome ILIKE %s OR c.documento ILIKE %s)"
+        params.append(f"%{cliente_busca}%")
+        params.append(f"%{cliente_busca}%")
+    if metodo:
+        query += " AND f.metodo_pagamento = %s"
+        params.append(metodo)
+
+    query += " ORDER BY f.id DESC"
+
+    cur.execute(query, params)
+    pagamentos = cur.fetchall()
+    total_count = len(pagamentos)
+    total_valor = float(sum(p["valor_recebido"] for p in pagamentos)) if pagamentos else 0
+
+    cur.close()
+    conn.close()
+
+    return {"pagamentos": [dict(p) for p in pagamentos], "total": total_count, "total_valor": total_valor}
+
+@app.get("/dashboard/clientes")
+def dashboard_lista_clientes(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT id, nome FROM clientes ORDER BY nome ASC;")
+    clientes = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [dict(c) for c in clientes]
+
+# ──────────────────────────── DEPARTAMENTOS ────────────────────────────
+
+class DepartamentoSchema(BaseModel):
+    nome: str
+    descricao: str = ""
+
+@app.get("/departamentos")
+def listar_departamentos(todos: bool = False, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if todos:
+            cur.execute("SELECT * FROM departamentos ORDER BY nome ASC;")
+        else:
+            cur.execute("SELECT * FROM departamentos WHERE ativo = TRUE ORDER BY nome ASC;")
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/departamentos")
+def criar_departamento(data: DepartamentoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO departamentos (nome, descricao) VALUES (%s, %s) RETURNING id;",
+            (data.nome, data.descricao)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        return {"mensagem": "Departamento criado!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar departamento: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/departamentos/{dept_id}")
+def atualizar_departamento(dept_id: int, data: DepartamentoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM departamentos WHERE id = %s;", (dept_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Departamento não encontrado")
+        cur.execute(
+            "UPDATE departamentos SET nome = %s, descricao = %s WHERE id = %s;",
+            (data.nome, data.descricao, dept_id)
+        )
+        conn.commit()
+        return {"mensagem": "Departamento atualizado!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/departamentos/{dept_id}")
+def deletar_departamento(dept_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM departamentos WHERE id = %s;", (dept_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Departamento não encontrado")
+        cur.execute("UPDATE departamentos SET ativo = FALSE WHERE id = %s;", (dept_id,))
+        conn.commit()
+        return {"mensagem": "Departamento removido!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao remover: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── FUNCIONÁRIOS ────────────────────────────
+
+class FuncionarioSchema(BaseModel):
+    nome: str
+    cargo: str = ""
+    departamento_id: int | None = None
+    data_admissao: str | None = None
+    salario: float = 0
+    comissao_pct: float = 0
+    telefone: str = ""
+    email: str = ""
+    foto_url: str = ""
+
+@app.get("/funcionarios/ranking")
+def ranking_funcionarios(periodo_inicio: str = "", periodo_fim: str = "", token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        where_clause = "WHERE v.status = 'Concluída'"
+        params = []
+        if periodo_inicio:
+            where_clause += " AND v.data_venda >= %s"
+            params.append(periodo_inicio)
+        if periodo_fim:
+            where_clause += " AND v.data_venda <= %s"
+            params.append(periodo_fim + " 23:59:59")
+
+        cur.execute(f"""
+            SELECT f.id, f.nome, f.cargo, f.foto_url,
+                COUNT(v.id) as total_vendas,
+                COALESCE(SUM(v.valor_total), 0) as valor_total_vendas,
+                CASE WHEN COUNT(v.id) > 0 THEN COALESCE(SUM(v.valor_total), 0) / COUNT(v.id) ELSE 0 END as ticket_medio
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id {where_clause}
+            WHERE f.ativo = TRUE
+            GROUP BY f.id, f.nome, f.cargo, f.foto_url
+            ORDER BY valor_total_vendas DESC
+        """, params)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/funcionarios/funcionario-do-mes")
+def funcionario_do_mes(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT f.id, f.nome, f.cargo, f.foto_url,
+                COUNT(v.id) as total_vendas,
+                COALESCE(SUM(v.valor_total), 0) as valor_total_vendas
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id
+                AND v.status = 'Concluída'
+                AND EXTRACT(MONTH FROM v.data_venda) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM v.data_venda) = EXTRACT(YEAR FROM CURRENT_DATE)
+            WHERE f.ativo = TRUE
+            GROUP BY f.id, f.nome, f.cargo, f.foto_url
+            ORDER BY valor_total_vendas DESC
+            LIMIT 1
+        """)
+        result = cur.fetchone()
+        return dict(result) if result else {}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/funcionarios")
+def listar_funcionarios(q: str = "", departamento_id: int = 0, cargo: str = "", ativo: str = "true", token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        where = "WHERE 1=1"
+        params = []
+        if ativo.lower() == "true":
+            where += " AND f.ativo = TRUE"
+        elif ativo.lower() == "false":
+            where += " AND f.ativo = FALSE"
+        if q:
+            where += " AND (f.nome ILIKE %s OR f.cargo ILIKE %s)"
+            params.extend([f"%{q}%", f"%{q}%"])
+        if departamento_id:
+            where += " AND f.departamento_id = %s"
+            params.append(departamento_id)
+        if cargo:
+            where += " AND f.cargo ILIKE %s"
+            params.append(f"%{cargo}%")
+
+        cur.execute(f"""
+            SELECT f.*, d.nome as departamento_nome
+            FROM funcionarios f
+            LEFT JOIN departamentos d ON f.departamento_id = d.id
+            {where}
+            ORDER BY f.nome ASC
+        """, params)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/funcionarios/{func_id}")
+def detalhes_funcionario(func_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT f.*, d.nome as departamento_nome
+            FROM funcionarios f
+            LEFT JOIN departamentos d ON f.departamento_id = d.id
+            WHERE f.id = %s
+        """, (func_id,))
+        func = cur.fetchone()
+        if not func:
+            raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+
+        cur.execute("""
+            SELECT COUNT(v.id) as total_vendas,
+                COALESCE(SUM(v.valor_total), 0) as valor_total_vendas,
+                CASE WHEN COUNT(v.id) > 0 THEN COALESCE(SUM(v.valor_total), 0) / COUNT(v.id) ELSE 0 END as ticket_medio
+            FROM vendas v
+            WHERE v.funcionario_id = %s AND v.status = 'Concluída'
+        """, (func_id,))
+        stats = cur.fetchone()
+
+        cur.execute("""
+            SELECT m.*,
+                CASE WHEN m.valor_meta > 0 THEN ROUND((m.valor_alcancado / m.valor_meta * 100)::numeric, 1) ELSE 0 END as percentual
+            FROM metas m
+            WHERE m.funcionario_id = %s AND m.status = 'Ativa'
+            ORDER BY m.data_fim DESC
+        """, (func_id,))
+        metas = cur.fetchall()
+
+        return {
+            "funcionario": dict(func),
+            "stats": dict(stats),
+            "metas": [dict(m) for m in metas]
+        }
+    except HTTPException:
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/funcionarios")
+def criar_funcionario(data: FuncionarioSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """INSERT INTO funcionarios (nome, cargo, departamento_id, data_admissao, salario, comissao_pct, telefone, email, foto_url)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;""",
+            (data.nome, data.cargo, data.departamento_id, data.data_admissao, data.salario, data.comissao_pct, data.telefone, data.email, data.foto_url)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        return {"mensagem": "Funcionário criado!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar funcionário: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/funcionarios/{func_id}")
+def atualizar_funcionario(func_id: int, data: FuncionarioSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM funcionarios WHERE id = %s;", (func_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+        cur.execute(
+            """UPDATE funcionarios SET nome = %s, cargo = %s, departamento_id = %s, data_admissao = %s,
+               salario = %s, comissao_pct = %s, telefone = %s, email = %s, foto_url = %s WHERE id = %s;""",
+            (data.nome, data.cargo, data.departamento_id, data.data_admissao, data.salario, data.comissao_pct, data.telefone, data.email, data.foto_url, func_id)
+        )
+        conn.commit()
+        return {"mensagem": "Funcionário atualizado!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/funcionarios/{func_id}")
+def deletar_funcionario(func_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM funcionarios WHERE id = %s;", (func_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+        cur.execute("UPDATE funcionarios SET ativo = FALSE WHERE id = %s;", (func_id,))
+        conn.commit()
+        return {"mensagem": "Funcionário removido!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao remover: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── PRODUTOS ────────────────────────────
+
+class ProdutoSchema(BaseModel):
+    nome: str
+    categoria: str = ""
+    preco: float = 0
+    custo: float = 0
+    estoque_atual: int = 0
+    estoque_minimo: int = 5
+    unidade: str = "un"
+    codigo_barras: str = ""
+
+@app.get("/produtos/alertas")
+def produtos_alerta(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT * FROM produtos
+            WHERE ativo = TRUE AND estoque_atual <= estoque_minimo
+            ORDER BY estoque_atual ASC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/produtos/categorias")
+def listar_categorias(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT DISTINCT categoria FROM produtos
+            WHERE ativo = TRUE AND categoria != ''
+            ORDER BY categoria ASC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── PIPELINE DE VENDAS ────────────────────────────
+
+class LeadSchema(BaseModel):
+    cliente_id: int | None = None
+    titulo: str
+    valor: float = 0
+    estagio: str = "Prospecção"
+    responsavel_id: int | None = None
+    probabilidade: int = 20
+    notas: str = ""
+    origem: str = ""
+
+@app.get("/pipeline")
+def listar_pipeline(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        estagio = None
+        cur.execute("""
+            SELECT p.*, c.nome as cliente_nome, f.nome as responsavel_nome
+            FROM pipeline_leads p
+            LEFT JOIN clientes c ON p.cliente_id = c.id
+            LEFT JOIN funcionarios f ON p.responsavel_id = f.id
+            ORDER BY p.data_criacao DESC
+        """)
+        leads = [dict(r) for r in cur.fetchall()]
+        estagios = {}
+        for lead in leads:
+            e = lead["estagio"]
+            if e not in estagios:
+                estagios[e] = []
+            estagios[e].append(lead)
+        return {"leads": leads, "por_estagio": estagios}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/pipeline")
+def criar_lead(data: LeadSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO pipeline_leads (cliente_id, titulo, valor, estagio, responsavel_id, probabilidade, notas, origem)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.titulo, data.valor, data.estagio, data.responsavel_id, data.probabilidade, data.notas, data.origem))
+        lead = cur.fetchone()
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/pipeline/{lead_id}")
+def atualizar_lead(lead_id: int, data: LeadSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE pipeline_leads SET titulo=%s, valor=%s, estagio=%s, responsavel_id=%s,
+            probabilidade=%s, notas=%s, origem=%s, data_atualizacao=CURRENT_TIMESTAMP
+            WHERE id=%s RETURNING *
+        """, (data.titulo, data.valor, data.estagio, data.responsavel_id, data.probabilidade, data.notas, data.origem, lead_id))
+        lead = cur.fetchone()
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/pipeline/{lead_id}/estagio")
+def mover_lead(lead_id: int, estagio: str, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        prob_map = {"Prospecção": 20, "Qualificação": 40, "Proposta": 60, "Negociação": 80, "Fechamento": 95, "Ganho": 100, "Perdido": 0}
+        prob = prob_map.get(estagio, 20)
+        cur.execute("""
+            UPDATE pipeline_leads SET estagio=%s, probabilidade=%s, data_atualizacao=CURRENT_TIMESTAMP
+            WHERE id=%s RETURNING *
+        """, (estagio, prob, lead_id))
+        lead = cur.fetchone()
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return dict(lead)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/pipeline/{lead_id}")
+def deletar_lead(lead_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM pipeline_leads WHERE id=%s", (lead_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Lead não encontrado")
+        conn.commit()
+        return {"mensagem": "Lead removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── CONTATOS ────────────────────────────
+
+class ContatoSchema(BaseModel):
+    cliente_id: int
+    tipo: str
+    assunto: str = ""
+    descricao: str = ""
+    funcionario_id: int | None = None
+    resultado: str = ""
+    proximo_passo: str = ""
+    data_proximo_contato: str | None = None
+
+@app.get("/contatos")
+def listar_contatos(cliente_id: int | None = None, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if cliente_id:
+            cur.execute("""
+                SELECT ct.*, c.nome as cliente_nome, f.nome as funcionario_nome
+                FROM contatos ct
+                LEFT JOIN clientes c ON ct.cliente_id = c.id
+                LEFT JOIN funcionarios f ON ct.funcionario_id = f.id
+                WHERE ct.cliente_id = %s
+                ORDER BY ct.data_contato DESC
+            """, (cliente_id,))
+        else:
+            cur.execute("""
+                SELECT ct.*, c.nome as cliente_nome, f.nome as funcionario_nome
+                FROM contatos ct
+                LEFT JOIN clientes c ON ct.cliente_id = c.id
+                LEFT JOIN funcionarios f ON ct.funcionario_id = f.id
+                ORDER BY ct.data_contato DESC LIMIT 200
+            """)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/contatos")
+def criar_contato(data: ContatoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO contatos (cliente_id, tipo, assunto, descricao, funcionario_id, resultado, proximo_passo, data_proximo_contato)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.tipo, data.assunto, data.descricao, data.funcionario_id, data.resultado, data.proximo_passo, data.data_proximo_contato))
+        contato = cur.fetchone()
+        conn.commit()
+        return dict(contato)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/contatos/{contato_id}")
+def deletar_contato(contato_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM contatos WHERE id=%s", (contato_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Contato não encontrado")
+        conn.commit()
+        return {"mensagem": "Contato removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── COMPROMISSOS / AGENDA ────────────────────────────
+
+class CompromissoSchema(BaseModel):
+    titulo: str
+    descricao: str = ""
+    data_inicio: str
+    data_fim: str | None = None
+    tipo: str = "Reunião"
+    status: str = "Pendente"
+    cliente_id: int | None = None
+    funcionario_id: int | None = None
+    local: str = ""
+
+@app.get("/compromissos")
+def listar_compromissos(status: str | None = None, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT cp.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM compromissos cp
+            LEFT JOIN clientes c ON cp.cliente_id = c.id
+            LEFT JOIN funcionarios f ON cp.funcionario_id = f.id
+        """
+        params = []
+        if status:
+            query += " WHERE cp.status = %s"
+            params.append(status)
+        query += " ORDER BY cp.data_inicio ASC"
+        cur.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/compromissos")
+def criar_compromisso(data: CompromissoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO compromissos (titulo, descricao, data_inicio, data_fim, tipo, status, cliente_id, funcionario_id, local)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.titulo, data.descricao, data.data_inicio, data.data_fim, data.tipo, data.status, data.cliente_id, data.funcionario_id, data.local))
+        compromisso = cur.fetchone()
+        conn.commit()
+        return dict(compromisso)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/compromissos/{comp_id}")
+def atualizar_compromisso(comp_id: int, data: CompromissoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE compromissos SET titulo=%s, descricao=%s, data_inicio=%s, data_fim=%s,
+            tipo=%s, status=%s, cliente_id=%s, funcionario_id=%s, local=%s
+            WHERE id=%s RETURNING *
+        """, (data.titulo, data.descricao, data.data_inicio, data.data_fim, data.tipo, data.status, data.cliente_id, data.funcionario_id, data.local, comp_id))
+        compromisso = cur.fetchone()
+        if not compromisso:
+            raise HTTPException(status_code=404, detail="Compromisso não encontrado")
+        conn.commit()
+        return dict(compromisso)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/compromissos/{comp_id}")
+def deletar_compromisso(comp_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM compromissos WHERE id=%s", (comp_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Compromisso não encontrado")
+        conn.commit()
+        return {"mensagem": "Compromisso removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── TICKETS / SUPORTE ────────────────────────────
+
+class TicketSchema(BaseModel):
+    cliente_id: int | None = None
+    titulo: str
+    descricao: str = ""
+    prioridade: str = "Média"
+    status: str = "Aberto"
+    funcionario_id: int | None = None
+    sla_horas: int = 24
+
+@app.get("/tickets")
+def listar_tickets(status: str | None = None, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT t.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM tickets t
+            LEFT JOIN clientes c ON t.cliente_id = c.id
+            LEFT JOIN funcionarios f ON t.funcionario_id = f.id
+        """
+        params = []
+        if status:
+            query += " WHERE t.status = %s"
+            params.append(status)
+        query += " ORDER BY t.data_criacao DESC"
+        cur.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/tickets")
+def criar_ticket(data: TicketSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO tickets (cliente_id, titulo, descricao, prioridade, status, funcionario_id, sla_horas)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.cliente_id, data.titulo, data.descricao, data.prioridade, data.status, data.funcionario_id, data.sla_horas))
+        ticket = cur.fetchone()
+        conn.commit()
+        return dict(ticket)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/tickets/{ticket_id}")
+def atualizar_ticket(ticket_id: int, data: TicketSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE tickets SET titulo=%s, descricao=%s, prioridade=%s, status=%s,
+            funcionario_id=%s, sla_horas=%s,
+            cliente_id = CASE WHEN %s THEN %s ELSE cliente_id END,
+            data_resolucao = CASE WHEN %s = 'Resolvido' THEN CURRENT_TIMESTAMP ELSE NULL END
+            WHERE id=%s RETURNING *
+        """, (data.titulo, data.descricao, data.prioridade, data.status,
+              data.funcionario_id, data.sla_horas,
+              "cliente_id" in data.model_fields_set, data.cliente_id,
+              data.status, ticket_id))
+        ticket = cur.fetchone()
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket não encontrado")
+        conn.commit()
+        return dict(ticket)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/tickets/{ticket_id}")
+def deletar_ticket(ticket_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM tickets WHERE id=%s", (ticket_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Ticket não encontrado")
+        conn.commit()
+        return {"mensagem": "Ticket removido"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── CAMPANHAS ────────────────────────────
+
+class CampanhaSchema(BaseModel):
+    nome: str
+    tipo: str = ""
+    data_inicio: str | None = None
+    data_fim: str | None = None
+    status: str = "Ativa"
+    orcamento: float = 0
+    descricao: str = ""
+
+@app.get("/campanhas")
+def listar_campanhas(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM campanhas ORDER BY data_inicio DESC")
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/campanhas")
+def criar_campanha(data: CampanhaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            INSERT INTO campanhas (nome, tipo, data_inicio, data_fim, status, orcamento, descricao)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *
+        """, (data.nome, data.tipo, data.data_inicio, data.data_fim, data.status, data.orcamento, data.descricao))
+        campanha = cur.fetchone()
+        conn.commit()
+        return dict(campanha)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/campanhas/{camp_id}")
+def atualizar_campanha(camp_id: int, data: CampanhaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            UPDATE campanhas SET nome=%s, tipo=%s, data_inicio=%s, data_fim=%s,
+            status=%s, orcamento=%s, descricao=%s WHERE id=%s RETURNING *
+        """, (data.nome, data.tipo, data.data_inicio, data.data_fim, data.status, data.orcamento, data.descricao, camp_id))
+        campanha = cur.fetchone()
+        if not campanha:
+            raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        conn.commit()
+        return dict(campanha)
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/campanhas/{camp_id}")
+def deletar_campanha(camp_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM campanhas WHERE id=%s", (camp_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        conn.commit()
+        return {"mensagem": "Campanha removida"}
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── EXPORTAÇÃO CSV ────────────────────────────
+
+@app.get("/export/clientes-csv")
+def exportar_clientes_csv(token_data: dict = Depends(exigir_admin)):
+    from fastapi.responses import StreamingResponse
+    import csv, io
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM clientes ORDER BY nome")
+        clientes = cur.fetchall()
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(["ID", "Nome", "Documento", "WhatsApp", "Email"])
+        for c in clientes:
+            writer.writerow([c["id"], c["nome"], c["documento"], c["whatsapp"], c["email"]])
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=clientes.csv"})
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/export/vendas-csv")
+def exportar_vendas_csv(data_inicio: str = None, data_fim: str = None, token_data: dict = Depends(exigir_admin)):
+    from fastapi.responses import StreamingResponse
+    import csv, io
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = """
+            SELECT v.*, c.nome as cliente_nome, f.nome as funcionario_nome
+            FROM vendas v
+            LEFT JOIN clientes c ON v.cliente_id = c.id
+            LEFT JOIN funcionarios f ON v.funcionario_id = f.id
+            WHERE 1=1
+        """
+        params = []
+        if data_inicio:
+            query += " AND v.data_venda >= %s"
+            params.append(data_inicio)
+        if data_fim:
+            query += " AND v.data_venda <= %s"
+            params.append(data_fim + " 23:59:59")
+        query += " ORDER BY v.data_venda DESC"
+        cur.execute(query, params)
+        vendas = cur.fetchall()
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(["ID", "Cliente", "Funcionário", "Data", "Valor Total", "Desconto", "Método Pagamento", "Status"])
+        for v in vendas:
+            writer.writerow([v["id"], v.get("cliente_nome",""), v.get("funcionario_nome",""),
+                str(v["data_venda"])[:10] if v["data_venda"] else "", v["valor_total"], v["desconto"], v["metodo_pagamento"], v["status"]])
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=vendas.csv"})
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/produtos")
+def listar_produtos(q: str = "", categoria: str = "", ativo: str = "true", token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        where = "WHERE 1=1"
+        params = []
+        if ativo.lower() == "true":
+            where += " AND ativo = TRUE"
+        elif ativo.lower() == "false":
+            where += " AND ativo = FALSE"
+        if q:
+            where += " AND (nome ILIKE %s OR codigo_barras ILIKE %s)"
+            params.extend([f"%{q}%", f"%{q}%"])
+        if categoria:
+            where += " AND categoria ILIKE %s"
+            params.append(f"%{categoria}%")
+
+        cur.execute(f"SELECT * FROM produtos {where} ORDER BY nome ASC", params)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/produtos/{produto_id}")
+def detalhes_produto(produto_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM produtos WHERE id = %s;", (produto_id,))
+        prod = cur.fetchone()
+        if not prod:
+            raise HTTPException(status_code=404, detail="Produto não encontrado")
+        return dict(prod)
+    except HTTPException:
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/produtos")
+def criar_produto(data: ProdutoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """INSERT INTO produtos (nome, categoria, preco, custo, estoque_atual, estoque_minimo, unidade, codigo_barras)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;""",
+            (data.nome, data.categoria, data.preco, data.custo, data.estoque_atual, data.estoque_minimo, data.unidade, data.codigo_barras)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        return {"mensagem": "Produto criado!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar produto: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/produtos/{produto_id}")
+def atualizar_produto(produto_id: int, data: ProdutoSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM produtos WHERE id = %s;", (produto_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Produto não encontrado")
+        cur.execute(
+            """UPDATE produtos SET nome = %s, categoria = %s, preco = %s, custo = %s,
+               estoque_atual = %s, estoque_minimo = %s, unidade = %s, codigo_barras = %s WHERE id = %s;""",
+            (data.nome, data.categoria, data.preco, data.custo, data.estoque_atual, data.estoque_minimo, data.unidade, data.codigo_barras, produto_id)
+        )
+        conn.commit()
+        return {"mensagem": "Produto atualizado!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/produtos/{produto_id}")
+def deletar_produto(produto_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM produtos WHERE id = %s;", (produto_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Produto não encontrado")
+        cur.execute("UPDATE produtos SET ativo = FALSE WHERE id = %s;", (produto_id,))
+        conn.commit()
+        return {"mensagem": "Produto removido!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao remover: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── VENDAS ────────────────────────────
+
+class ItemVendaSchema(BaseModel):
+    produto_id: int
+    quantidade: int = 1
+    preco_unitario: float = 0
+
+class VendaSchema(BaseModel):
+    funcionario_id: int | None = None
+    cliente_id: int | None = None
+    desconto: float = 0
+    metodo_pagamento: str = ""
+    status: str = "Concluída"
+    observacoes: str = ""
+    itens: list[ItemVendaSchema] = []
+
+@app.get("/vendas/por-periodo")
+def vendas_por_periodo(ano: str = "", token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if not ano:
+            ano = str(datetime.now().year)
+        cur.execute("""
+            SELECT EXTRACT(MONTH FROM data_venda) as mes,
+                COUNT(*) as total_vendas,
+                COALESCE(SUM(valor_total), 0) as valor_total,
+                COALESCE(SUM(valor_total + desconto), 0) as valor_bruto
+            FROM vendas
+            WHERE EXTRACT(YEAR FROM data_venda) = %s AND status != 'Cancelada'
+            GROUP BY EXTRACT(MONTH FROM data_venda)
+            ORDER BY mes ASC
+        """, (ano,))
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/vendas/por-funcionario")
+def vendas_por_funcionario(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT f.id, f.nome,
+                COUNT(v.id) as total_vendas,
+                COALESCE(SUM(v.valor_total), 0) as valor_total
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id AND v.status != 'Cancelada'
+            WHERE f.ativo = TRUE
+            GROUP BY f.id, f.nome
+            ORDER BY valor_total DESC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/vendas")
+def listar_vendas(
+    funcionario_id: int = 0,
+    cliente_id: int = 0,
+    status: str = "",
+    data_inicio: str = "",
+    data_fim: str = "",
+    metodo_pagamento: str = "",
+    token_data: dict = Depends(exigir_admin)
+):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        where = "WHERE 1=1"
+        params = []
+        if funcionario_id:
+            where += " AND v.funcionario_id = %s"
+            params.append(funcionario_id)
+        if cliente_id:
+            where += " AND v.cliente_id = %s"
+            params.append(cliente_id)
+        if status:
+            where += " AND v.status = %s"
+            params.append(status)
+        if data_inicio:
+            where += " AND v.data_venda >= %s"
+            params.append(data_inicio)
+        if data_fim:
+            where += " AND v.data_venda <= %s"
+            params.append(data_fim + " 23:59:59")
+        if metodo_pagamento:
+            where += " AND v.metodo_pagamento = %s"
+            params.append(metodo_pagamento)
+
+        cur.execute(f"""
+            SELECT v.*, f.nome as funcionario_nome, c.nome as cliente_nome
+            FROM vendas v
+            LEFT JOIN funcionarios f ON v.funcionario_id = f.id
+            LEFT JOIN clientes c ON v.cliente_id = c.id
+            {where}
+            ORDER BY v.data_venda DESC
+        """, params)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/vendas/{venda_id}")
+def detalhes_venda(venda_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT v.*, f.nome as funcionario_nome, c.nome as cliente_nome
+            FROM vendas v
+            LEFT JOIN funcionarios f ON v.funcionario_id = f.id
+            LEFT JOIN clientes c ON v.cliente_id = c.id
+            WHERE v.id = %s
+        """, (venda_id,))
+        venda = cur.fetchone()
+        if not venda:
+            raise HTTPException(status_code=404, detail="Venda não encontrada")
+
+        cur.execute("""
+            SELECT iv.*, p.nome as produto_nome, p.unidade
+            FROM itens_venda iv
+            JOIN produtos p ON iv.produto_id = p.id
+            WHERE iv.venda_id = %s
+        """, (venda_id,))
+        itens = cur.fetchall()
+
+        return {
+            "venda": dict(venda),
+            "itens": [dict(i) for i in itens]
+        }
+    except HTTPException:
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/vendas")
+def criar_venda(data: VendaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        valor_total = 0
+        for item in data.itens:
+            valor_total += item.quantidade * item.preco_unitario
+        valor_total = max(0, valor_total - data.desconto)
+
+        cur.execute(
+            """INSERT INTO vendas (funcionario_id, cliente_id, valor_total, desconto, metodo_pagamento, status, observacoes)
+               VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;""",
+            (data.funcionario_id, data.cliente_id, valor_total, data.desconto, data.metodo_pagamento, data.status, data.observacoes)
+        )
+        venda_id = cur.fetchone()["id"]
+
+        for item in data.itens:
+            subtotal = item.quantidade * item.preco_unitario
+            cur.execute(
+                """INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario, subtotal)
+                   VALUES (%s, %s, %s, %s, %s);""",
+                (venda_id, item.produto_id, item.quantidade, item.preco_unitario, subtotal)
+            )
+            if data.status == "Concluída":
+                cur.execute(
+                    "UPDATE produtos SET estoque_atual = estoque_atual - %s WHERE id = %s;",
+                    (item.quantidade, item.produto_id)
+                )
+
+        conn.commit()
+        return {"mensagem": "Venda criada!", "id": venda_id, "valor_total": float(valor_total)}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar venda: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/vendas/{venda_id}")
+def atualizar_venda(venda_id: int, data: VendaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, status FROM vendas WHERE id = %s;", (venda_id,))
+        existing = cur.fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Venda não encontrada")
+
+        status_anterior = existing["status"]
+        itens_enviados = "itens" in data.model_fields_set
+
+        # Itens atuais (para estornar o estoque consumido pela versão anterior)
+        cur.execute(
+            "SELECT produto_id, quantidade, preco_unitario, subtotal FROM itens_venda WHERE venda_id = %s;",
+            (venda_id,)
+        )
+        itens_anteriores = cur.fetchall()
+
+        if itens_enviados:
+            cur.execute("DELETE FROM itens_venda WHERE venda_id = %s;", (venda_id,))
+            for item in data.itens:
+                subtotal = item.quantidade * item.preco_unitario
+                cur.execute(
+                    """INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario, subtotal)
+                       VALUES (%s, %s, %s, %s, %s);""",
+                    (venda_id, item.produto_id, item.quantidade, item.preco_unitario, subtotal)
+                )
+            itens_finais = [
+                {"produto_id": i.produto_id, "quantidade": i.quantidade, "subtotal": i.quantidade * i.preco_unitario}
+                for i in data.itens
+            ]
+        else:
+            itens_finais = [
+                {"produto_id": i["produto_id"], "quantidade": i["quantidade"], "subtotal": float(i["subtotal"] or 0)}
+                for i in itens_anteriores
+            ]
+
+        valor_total = max(0, sum(i["subtotal"] for i in itens_finais) - data.desconto)
+
+        # Estoque: devolve os itens da versao anterior e consome os da nova versao.
+        # Sao independentes para que uma edicao mantendo "Concluida" fique neutra.
+        if status_anterior == "Concluída":
+            for item in itens_anteriores:
+                cur.execute(
+                    "UPDATE produtos SET estoque_atual = estoque_atual + %s WHERE id = %s;",
+                    (item["quantidade"], item["produto_id"])
+                )
+
+        if data.status == "Concluída":
+            for item in itens_finais:
+                cur.execute(
+                    "UPDATE produtos SET estoque_atual = estoque_atual - %s WHERE id = %s;",
+                    (item["quantidade"], item["produto_id"])
+                )
+
+        cur.execute(
+            """UPDATE vendas SET funcionario_id = %s, cliente_id = %s, valor_total = %s, desconto = %s,
+               metodo_pagamento = %s, status = %s, observacoes = %s WHERE id = %s;""",
+            (data.funcionario_id, data.cliente_id, valor_total, data.desconto,
+             data.metodo_pagamento, data.status, data.observacoes, venda_id)
+        )
+
+        conn.commit()
+        return {"mensagem": "Venda atualizada!", "valor_total": round(float(valor_total), 2)}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/vendas/{venda_id}")
+def cancelar_venda(venda_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, status FROM vendas WHERE id = %s;", (venda_id,))
+        venda = cur.fetchone()
+        if not venda:
+            raise HTTPException(status_code=404, detail="Venda não encontrada")
+        if venda["status"] == "Cancelada":
+            raise HTTPException(status_code=400, detail="Venda já está cancelada")
+
+        cur.execute("""
+            SELECT produto_id, quantidade FROM itens_venda WHERE venda_id = %s
+        """, (venda_id,))
+        itens = cur.fetchall()
+        # So devolve o estoque se a venda realmente consumiu itens (status Concluida)
+        if venda["status"] == "Concluída":
+            for item in itens:
+                cur.execute(
+                    "UPDATE produtos SET estoque_atual = estoque_atual + %s WHERE id = %s;",
+                    (item["quantidade"], item["produto_id"])
+                )
+
+        cur.execute("UPDATE vendas SET status = 'Cancelada' WHERE id = %s;", (venda_id,))
+        conn.commit()
+        return {"mensagem": "Venda cancelada e estoque restaurado!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao cancelar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── METAS ────────────────────────────
+
+class MetaSchema(BaseModel):
+    funcionario_id: int
+    tipo: str
+    valor_meta: float = 0
+    periodo: str = "Mensal"
+    data_inicio: str | None = None
+    data_fim: str | None = None
+
+@app.get("/metas/resumo")
+def metas_resumo(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT m.*, f.nome as funcionario_nome,
+                CASE WHEN m.valor_meta > 0 THEN ROUND((m.valor_alcancado / m.valor_meta * 100)::numeric, 1) ELSE 0 END as percentual
+            FROM metas m
+            LEFT JOIN funcionarios f ON m.funcionario_id = f.id
+            WHERE m.status = 'Ativa'
+            ORDER BY percentual DESC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/metas")
+def listar_metas(
+    funcionario_id: int = 0,
+    tipo: str = "",
+    status: str = "",
+    periodo: str = "",
+    token_data: dict = Depends(exigir_admin)
+):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        where = "WHERE 1=1"
+        params = []
+        if funcionario_id:
+            where += " AND m.funcionario_id = %s"
+            params.append(funcionario_id)
+        if tipo:
+            where += " AND m.tipo ILIKE %s"
+            params.append(f"%{tipo}%")
+        if status:
+            where += " AND m.status = %s"
+            params.append(status)
+        if periodo:
+            where += " AND m.periodo = %s"
+            params.append(periodo)
+
+        cur.execute(f"""
+            SELECT m.*, f.nome as funcionario_nome,
+                CASE WHEN m.valor_meta > 0 THEN ROUND((m.valor_alcancado / m.valor_meta * 100)::numeric, 1) ELSE 0 END as percentual
+            FROM metas m
+            LEFT JOIN funcionarios f ON m.funcionario_id = f.id
+            {where}
+            ORDER BY m.id DESC
+        """, params)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/metas")
+def criar_meta(data: MetaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """INSERT INTO metas (funcionario_id, tipo, valor_meta, periodo, data_inicio, data_fim)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;""",
+            (data.funcionario_id, data.tipo, data.valor_meta, data.periodo, data.data_inicio, data.data_fim)
+        )
+        novo_id = cur.fetchone()[0]
+        conn.commit()
+        return {"mensagem": "Meta criada!", "id": novo_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar meta: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/metas/{meta_id}")
+def atualizar_meta(meta_id: int, data: MetaSchema, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM metas WHERE id = %s;", (meta_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Meta não encontrada")
+        cur.execute(
+            """UPDATE metas SET funcionario_id = %s, tipo = %s, valor_meta = %s, periodo = %s,
+               data_inicio = %s, data_fim = %s WHERE id = %s;""",
+            (data.funcionario_id, data.tipo, data.valor_meta, data.periodo, data.data_inicio, data.data_fim, meta_id)
+        )
+        conn.commit()
+        return {"mensagem": "Meta atualizada!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/metas/{meta_id}")
+def deletar_meta(meta_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM metas WHERE id = %s;", (meta_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Meta não encontrada")
+        cur.execute("DELETE FROM metas WHERE id = %s;", (meta_id,))
+        conn.commit()
+        return {"mensagem": "Meta removida!"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao remover: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/metas/{meta_id}/progress")
+def progresso_meta(meta_id: int, token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT m.*, f.nome as funcionario_nome,
+                CASE WHEN m.valor_meta > 0 THEN ROUND((m.valor_alcancado / m.valor_meta * 100)::numeric, 1) ELSE 0 END as percentual
+            FROM metas m
+            LEFT JOIN funcionarios f ON m.funcionario_id = f.id
+            WHERE m.id = %s
+        """, (meta_id,))
+        meta = cur.fetchone()
+        if not meta:
+            raise HTTPException(status_code=404, detail="Meta não encontrada")
+
+        if meta["tipo"] == "Vendas":
+            cur.execute("""
+                SELECT COUNT(*) as total_vendas, COALESCE(SUM(valor_total), 0) as valor_total
+                FROM vendas
+                WHERE funcionario_id = %s AND status = 'Concluída'
+                    AND data_venda >= %s AND data_venda <= %s
+            """, (meta["funcionario_id"], meta["data_inicio"], meta["data_fim"]))
+            detalhes = cur.fetchone()
+            return {
+                "meta": dict(meta),
+                "detalhes": dict(detalhes)
+            }
+        else:
+            return {"meta": dict(meta), "detalhes": {}}
+    except HTTPException:
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+# ──────────────────────────── DASHBOARD AVANÇADO ────────────────────────────
+
+@app.get("/dashboard/geral")
+def dashboard_geral(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        now = datetime.now()
+        mes_atual = now.month
+        ano_atual = now.year
+
+        cur.execute("""
+            SELECT COUNT(*) as total, COALESCE(SUM(valor_total), 0) as receita
+            FROM vendas
+            WHERE EXTRACT(MONTH FROM data_venda) = %s AND EXTRACT(YEAR FROM data_venda) = %s
+                AND status != 'Cancelada'
+        """, (mes_atual, ano_atual))
+        vendas_mes = cur.fetchone()
+
+        cur.execute("""
+            SELECT COALESCE(SUM(valor_meta), 0) as meta_total
+            FROM metas
+            WHERE status = 'Ativa' AND tipo = 'Receita'
+                AND data_inicio <= CURRENT_DATE AND data_fim >= CURRENT_DATE
+        """)
+        meta_row = cur.fetchone()
+        meta_receita = float(meta_row["meta_total"]) if meta_row else 0
+        receita_val = float(vendas_mes["receita"]) if vendas_mes else 0
+        percentual_meta = round((receita_val / meta_receita * 100), 1) if meta_receita > 0 else 0
+
+        cur.execute("""
+            SELECT f.id, f.nome, COALESCE(SUM(v.valor_total), 0) as valor_total
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id AND v.status != 'Cancelada'
+                AND EXTRACT(MONTH FROM v.data_venda) = %s AND EXTRACT(YEAR FROM v.data_venda) = %s
+            WHERE f.ativo = TRUE
+            GROUP BY f.id, f.nome
+            ORDER BY valor_total DESC
+            LIMIT 1
+        """, (mes_atual, ano_atual))
+        func_mes = cur.fetchone()
+
+        cur.execute("""
+            SELECT CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(valor_total), 0) / COUNT(*) ELSE 0 END as ticket_medio
+            FROM vendas
+            WHERE EXTRACT(MONTH FROM data_venda) = %s AND EXTRACT(YEAR FROM data_venda) = %s
+                AND status != 'Cancelada'
+        """, (mes_atual, ano_atual))
+        ticket = cur.fetchone()
+
+        cur.execute("SELECT COUNT(*) as count FROM produtos WHERE ativo = TRUE AND estoque_atual <= estoque_minimo;")
+        estoque_baixo = cur.fetchone()
+
+        cur.execute("SELECT COUNT(*) as count FROM funcionarios WHERE ativo = TRUE;")
+        funcs_ativos = cur.fetchone()
+
+        cur.execute("""
+            SELECT TO_CHAR(DATE_TRUNC('month', data_venda), 'YYYY-MM') as mes,
+                COUNT(*) as total, COALESCE(SUM(valor_total), 0) as receita
+            FROM vendas
+            WHERE status != 'Cancelada' AND data_venda >= (CURRENT_DATE - INTERVAL '12 months')
+            GROUP BY mes
+            ORDER BY mes ASC
+        """)
+        vendas_por_mes = cur.fetchall()
+
+        cur.execute("""
+            SELECT f.nome, COUNT(v.id) as total, COALESCE(SUM(v.valor_total), 0) as valor
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id AND v.status != 'Cancelada'
+                AND EXTRACT(MONTH FROM v.data_venda) = %s AND EXTRACT(YEAR FROM v.data_venda) = %s
+            WHERE f.ativo = TRUE
+            GROUP BY f.nome
+            ORDER BY valor DESC
+        """, (mes_atual, ano_atual))
+        vendas_por_func = cur.fetchall()
+
+        cur.execute("""
+            SELECT status, COUNT(*) as count FROM vendas
+            WHERE EXTRACT(MONTH FROM data_venda) = %s AND EXTRACT(YEAR FROM data_venda) = %s
+            GROUP BY status
+        """, (mes_atual, ano_atual))
+        status_vendas = cur.fetchall()
+
+        return {
+            "total_vendas_mes": vendas_mes["total"] if vendas_mes else 0,
+            "receita_mes": receita_val,
+            "meta_receita": meta_receita,
+            "percentual_meta_receita": percentual_meta,
+            "funcionario_do_mes": dict(func_mes) if func_mes else None,
+            "ticket_medio": float(ticket["ticket_medio"]) if ticket else 0,
+            "produtos_estoque_baixo": estoque_baixo["count"] if estoque_baixo else 0,
+            "funcionarios_ativos": funcs_ativos["count"] if funcs_ativos else 0,
+            "vendas_por_mes": [dict(r) for r in vendas_por_mes],
+            "vendas_por_funcionario": [dict(r) for r in vendas_por_func],
+            "status_vendas": [dict(r) for r in status_vendas]
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/dashboard/vendas-mensal")
+def dashboard_vendas_mensal(ano: str = "", token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if not ano:
+            ano = str(datetime.now().year)
+        cur.execute("""
+            SELECT EXTRACT(MONTH FROM data_venda) as mes,
+                COUNT(*) as total_vendas,
+                COALESCE(SUM(valor_total), 0) as valor_total,
+                COALESCE(SUM(valor_total + desconto), 0) as valor_bruto
+            FROM vendas
+            WHERE EXTRACT(YEAR FROM data_venda) = %s AND status != 'Cancelada'
+            GROUP BY EXTRACT(MONTH FROM data_venda)
+            ORDER BY mes ASC
+        """, (ano,))
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/dashboard/desempenho")
+def dashboard_desempenho(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT f.id, f.nome, f.cargo, f.foto_url,
+                COUNT(v.id) as total_vendas,
+                COALESCE(SUM(v.valor_total), 0) as valor_total,
+                CASE WHEN COUNT(v.id) > 0 THEN COALESCE(SUM(v.valor_total), 0) / COUNT(v.id) ELSE 0 END as ticket_medio,
+                EXTRACT(MONTH FROM CURRENT_DATE) as mes_atual,
+                EXTRACT(YEAR FROM CURRENT_DATE) as ano_atual
+            FROM funcionarios f
+            LEFT JOIN vendas v ON v.funcionario_id = f.id AND v.status != 'Cancelada'
+                AND EXTRACT(MONTH FROM v.data_venda) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM v.data_venda) = EXTRACT(YEAR FROM CURRENT_DATE)
+            WHERE f.ativo = TRUE
+            GROUP BY f.id, f.nome, f.cargo, f.foto_url
+            ORDER BY valor_total DESC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/dashboard/estoque-resumo")
+def dashboard_estoque_resumo(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT categoria,
+                COUNT(*) as total_produtos,
+                COALESCE(SUM(estoque_atual), 0) as estoque_total,
+                COALESCE(SUM(estoque_atual * preco), 0) as valor_estoque,
+                SUM(CASE WHEN estoque_atual <= estoque_minimo THEN 1 ELSE 0 END) as alertas
+            FROM produtos
+            WHERE ativo = TRUE
+            GROUP BY categoria
+            ORDER BY categoria ASC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/dashboard/metas-resumo")
+def dashboard_metas_resumo(token_data: dict = Depends(exigir_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT m.*, f.nome as funcionario_nome,
+                CASE WHEN m.valor_meta > 0 THEN ROUND((m.valor_alcancado / m.valor_meta * 100)::numeric, 1) ELSE 0 END as percentual
+            FROM metas m
+            LEFT JOIN funcionarios f ON m.funcionario_id = f.id
+            WHERE m.status = 'Ativa'
+            ORDER BY percentual DESC
+        """)
+        result = cur.fetchall()
+        return [dict(r) for r in result]
+    finally:
+        cur.close()
+        conn.close()
